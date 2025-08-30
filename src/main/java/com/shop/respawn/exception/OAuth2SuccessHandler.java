@@ -4,6 +4,7 @@ import com.shop.respawn.domain.Buyer;
 import com.shop.respawn.repository.BuyerRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -35,6 +36,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             String missing = buildMissingCsv(buyer);
             String parentUrl = "http://localhost:3000/profile/complete?missing=" +
                     URLEncoder.encode(missing, StandardCharsets.UTF_8);
+            HttpSession session = request.getSession();
+            session.setAttribute("userId", buyer.getId());
             redirectParentAndClose(response, parentUrl); // 팝업 닫고 부모 이동
             return;
         }
