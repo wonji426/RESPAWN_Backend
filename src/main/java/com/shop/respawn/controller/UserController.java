@@ -95,6 +95,11 @@ public class UserController {
         }
     }
 
+    @GetMapping("/myPage/summary")
+    public ResponseEntity<CommonResponse<MyPageMiniResponse>> summary(Authentication authentication) {
+        return ResponseEntity.ok(CommonResponse.of(_OK, userService.getMyPageMini(authentication)));
+    }
+
     /**
      * 마이페이지에서 비밀번호가 일치하는지 검사하는 메서드
      */

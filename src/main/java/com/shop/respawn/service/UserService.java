@@ -5,10 +5,7 @@ import com.shop.respawn.dto.findInfo.FindInfoRequest;
 import com.shop.respawn.dto.findInfo.FindInfoResponse;
 import com.shop.respawn.dto.findInfo.ResetPasswordRequest;
 import com.shop.respawn.dto.query.UserQueryDto;
-import com.shop.respawn.dto.user.LoginOkResponse;
-import com.shop.respawn.dto.user.MeResponse;
-import com.shop.respawn.dto.user.ProfileUpdateRequest;
-import com.shop.respawn.dto.user.UserDto;
+import com.shop.respawn.dto.user.*;
 import com.shop.respawn.email.EmailService;
 import com.shop.respawn.repository.AdminRepository;
 import com.shop.respawn.repository.BuyerRepository;
@@ -763,6 +760,19 @@ public class UserService {
 
             default -> throw new RuntimeException("지원하지 않는 역할입니다.");
         }
+    }
+
+    public MyPageMiniResponse getMyPageMini(Authentication authentication) {
+        if (authentication == null) {
+            throw new RuntimeException("인증 필요");
+        }
+        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName()); // 또는 username으로 buyerId 조회
+
+        Long active = buyerRepository.findActivePoint(buyerId);
+        Long couponCnt = buyerRepository.countUsableCoupons(buyerId, LocalDateTime.now());
+        var grade = buyerRepository.findBuyerGrade(buyerId);
+
+        return new MyPageMiniResponse(active, couponCnt, grade);
     }
 
 }
