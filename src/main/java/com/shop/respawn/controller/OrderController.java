@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -159,16 +160,21 @@ public class OrderController {
      * 현재 사용자의 최근 주문 조회
      */
     @GetMapping("/latest")
-    public ResponseEntity<OrderHistoryDto> getLatestOrder(HttpSession session) {
-        Long buyerId = getBuyerIdFromSession(session);  // 로그인 사용자 아이디
+    public ResponseEntity<OrderHistoryDto> getLatestOrder(Authentication authentication) {
 
-        OrderHistoryDto latestOrder = orderService.getLatestOrderByBuyerId(buyerId);
+        OrderHistoryDto latestOrder = orderService.getLatestOrderByBuyerId(authentication);
 
         if (latestOrder == null) {
             return ResponseEntity.noContent().build();
         }
 
         return ResponseEntity.ok(latestOrder);
+    }
+
+    @GetMapping("/history/recent-month")
+    public ResponseEntity<List<OrderHistoryDto>> getRecentMonthOrders(Authentication authentication) {
+        List<OrderHistoryDto> orders = orderService.getRecentMonthOrders(authentication);
+        return ResponseEntity.ok(orders);
     }
 
     /**

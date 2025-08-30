@@ -9,6 +9,7 @@ import com.shop.respawn.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -472,7 +473,9 @@ public class OrderService {
     /**
      * 주문 내역 조회 메서드
      */
-    public OrderHistoryDto getLatestOrderByBuyerId(Long buyerId) {
+    public OrderHistoryDto getLatestOrderByBuyerId(Authentication authentication) {
+        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+
         Order order = orderRepository.findTop1ByBuyer_IdAndStatusOrderByOrderDateDesc(buyerId, OrderStatus.PAID);
 
         if (order == null) {  // 주문 없으면 null임
@@ -487,6 +490,43 @@ public class OrderService {
                 }).toList();
 
         return new OrderHistoryDto(order, itemDtos);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderHistoryDto> getRecentMonthOrders(Authentication authentication) {
+        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+
+        LocalDateTime to = LocalDateTime.now();
+        LocalDateTime from = to.minusMonths(1);
+
+        // 1) 한달 내 주문 헤더 Top-N (예: 100건 상한)
+        List<Order> orders = orderRepository.findRecentPaidOrdersByBuyer(buyerId, from, to, 100);
+
+        if (orders.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2) 주문아이디 목록으로 OrderItem 일괄 로딩 (배치 조회)
+        List<Long> orderIds = orders.stream().map(Order::getId).toList();
+
+        // OrderItem을 주문별로 묶기 위한 맵
+        Map<Long, List<OrderItem>> itemsByOrderId = orderItemRepository.findAllByOrder_IdIn(orderIds)
+                .stream()
+                .collect(Collectors.groupingBy(oi -> oi.getOrder().getId()));
+
+        // 3) DTO 변환: Mongo Item은 서비스 통해 조회
+        return orders.stream()
+                .map(o -> {
+                    List<OrderItem> orderItems = itemsByOrderId.getOrDefault(o.getId(), List.of());
+                    List<OrderHistoryItemDto> itemDtos = orderItems.stream()
+                            .map(oi -> {
+                                Item item = itemService.getItemById(oi.getItemId());
+                                return OrderHistoryItemDto.from(oi, item);
+                            })
+                            .toList();
+                    return new OrderHistoryDto(o, itemDtos);
+                })
+                .toList();
     }
 
     /**

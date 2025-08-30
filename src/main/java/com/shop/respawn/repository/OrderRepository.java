@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.Optional;
 
-public interface OrderRepository extends JpaRepository<Order, Long> {
+public interface OrderRepository extends JpaRepository<Order, Long>, OrderRepositoryCustom {
 
     List<Order> findByBuyer_IdOrderByOrderDateDesc(Long buyerId);
 
@@ -22,15 +22,4 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      */
     List<Order> findByBuyerIdAndStatusInAndPaymentStatus(Long buyerId, List<OrderStatus> statuses, String paymentStatus);
 
-    /**
-     * 구매자 ID와 ORDER ID 아이템 조회
-     */
-    @Query("""
-            select distinct o
-            from Order o
-            left join fetch o.orderItems oi
-            where o.id = :orderId and o.buyer.id = :buyerId
-            """)
-    Optional<Order> findByIdAndBuyerIdWithItems(@Param("orderId") Long orderId,
-                                                @Param("buyerId") Long buyerId);
 }

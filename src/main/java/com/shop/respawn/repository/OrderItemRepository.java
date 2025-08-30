@@ -24,4 +24,6 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
              AND d.status = :status
            """)
     List<OrderItem> findDeliveredItemsByBuyerIdAndStatus(Long buyerId, DeliveryStatus status);
+
+    List<OrderItem> findAllByOrder_IdIn(List<Long> orderIds);
 }
