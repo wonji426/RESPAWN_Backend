@@ -3,6 +3,8 @@ package com.shop.respawn.controller;
 
 import com.shop.respawn.domain.Item;
 import com.shop.respawn.dto.ItemDto;
+import com.shop.respawn.dto.OffsetPage;
+import com.shop.respawn.dto.OffsetResponse;
 import com.shop.respawn.service.ImageService;
 import com.shop.respawn.service.ItemService;
 import jakarta.servlet.http.HttpSession;
@@ -57,16 +59,21 @@ public class ItemController {
     }
 
     /**
-     * 전체 상품 조회
+     * 카테고리별 상품 조회
      */
     @GetMapping
-    public ResponseEntity<List<ItemDto>> getAllItems() {
-        List<Item> items = itemService.getAllItems();
-        List<ItemDto> itemDtos = items.stream()
+    public ResponseEntity<OffsetResponse<ItemDto>> getItems(
+            @RequestParam(name = "category", required = false) String category,
+            @RequestParam(name = "offset", defaultValue = "0") int offset,
+            @RequestParam(name = "limit", defaultValue = "8") int limit
+    ) {
+        OffsetPage<Item> result = itemService.findItemsByOffset(category, offset, limit);
+
+        List<ItemDto> itemDtos = result.items().stream()
                 .map(item -> new ItemDto(item.getId(), item.getName(), item.getDescription(), item.getDeliveryType(), item.getDeliveryFee(), item.getCompany(),
                         item.getCompanyNumber(), item.getPrice(), item.getStockQuantity(), item.getSellerId(), item.getImageUrl(), item.getCategoryIds()))
                 .toList();
-        return ResponseEntity.ok(itemDtos);
+        return ResponseEntity.ok(new OffsetResponse<>(itemDtos, offset, limit, result.total()));
     }
 
     /**

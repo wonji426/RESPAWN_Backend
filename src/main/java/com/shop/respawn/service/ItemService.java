@@ -2,10 +2,14 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.ItemDto;
+import com.shop.respawn.dto.OffsetPage;
 import com.shop.respawn.repository.ItemRepository;
 import com.shop.respawn.repository.OrderItemRepository;
 import com.shop.respawn.repository.SellerRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +23,7 @@ import static com.shop.respawn.domain.OrderStatus.*;
 @Transactional
 public class ItemService {
 
+    private final MongoTemplate mongoTemplate;
     private final ItemRepository itemRepository;
     private final SellerRepository sellerRepository;
     private final OrderItemRepository orderItemRepository; // 주문 아이템 조회용
@@ -86,6 +91,22 @@ public class ItemService {
 
     public List<Item> getAllItems() {
         return itemRepository.findAll();
+    }
+
+    public OffsetPage<Item> findItemsByOffset(String category, int offset, int limit) {
+        int safeOffset = Math.max(0, offset);
+        int safeLimit = Math.min(Math.max(1, limit), 100);
+
+        Query q = new Query();
+        if (category != null && !category.isBlank()) {
+            q.addCriteria(Criteria.where("categoryIds").is(category));
+        }
+
+        long total = mongoTemplate.count(q, Item.class);
+        q.skip(safeOffset).limit(safeLimit);
+        List<Item> items = mongoTemplate.find(q, Item.class);
+
+        return new OffsetPage<>(items, total);
     }
 
     public List<Item> getItemsBySellerId(String sellerId) {

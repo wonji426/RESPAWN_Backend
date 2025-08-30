@@ -41,7 +41,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         // 3) 누락 없으면 기존 목적지 처리(예: /loginOk로 세션 동기화)
         // SavedRequest를 쓰려면 SavedRequestAwareAuthenticationSuccessHandler 유사 로직을 적용
-        redirectParentAndClose(response, "http://localhost:8080/loginOk");
+        redirectParentAndClose(response, "http://localhost:3000/loginOk");
     }
 
     private boolean isIncompleteBuyer(Buyer b) {
