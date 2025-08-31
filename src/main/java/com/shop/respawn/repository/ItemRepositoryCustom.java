@@ -9,9 +9,10 @@ public interface ItemRepositoryCustom {
 
     List<Item> searchByKeywordRegex(String keyword);
 
-    List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds);
+    List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIdsHex);
 
     List<Item> fullTextSearch(String keyword);
 
     OffsetPage<Item> findItemsByOffsetUsingName(String categoryName, int offset, int limit);
+
 }

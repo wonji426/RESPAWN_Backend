@@ -14,6 +14,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+import static java.util.regex.Pattern.quote;
+
 @Repository
 @RequiredArgsConstructor
 public class ItemRepositoryImpl implements ItemRepositoryCustom{
@@ -21,7 +23,7 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
     private final MongoTemplate mongoTemplate;
 
     private Criteria buildKeywordOrRegex(String keyword) {
-        String escaped = java.util.regex.Pattern.quote(keyword);
+        String escaped = quote(keyword == null ? "" : keyword);
         return new Criteria().orOperator(
                 Criteria.where("name").regex(escaped, "i"),
                 Criteria.where("description").regex(escaped, "i"),
@@ -37,17 +39,25 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
 
     @Override
     public List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds) {
-        Criteria or = buildKeywordOrRegex(keyword);
-        Criteria cat = Criteria.where("categoryIds").in(categoryIds);
-        Query q = new Query(new Criteria().andOperator(or, cat));
-        return mongoTemplate.find(q, Item.class);
+        Criteria or = buildKeywordOrRegex(keyword == null ? "" : keyword);
+        List<ObjectId> catIds = categoryIds == null ? List.of() :
+                categoryIds.stream().filter(ObjectId::isValid).map(ObjectId::new).toList();
+        if (catIds.isEmpty()) return mongoTemplate.find(new Query(or), Item.class);
+        Criteria cat = Criteria.where("category").in(catIds);
+        return mongoTemplate.find(new Query(new Criteria().andOperator(or, cat)), Item.class);
     }
 
     @Override
     public List<Item> fullTextSearch(String keyword) {
-        TextCriteria text = TextCriteria.forDefaultLanguage().matching(keyword);
-        Query q = TextQuery.queryText(text).sortByScore();
-        return mongoTemplate.find(q, Item.class);
+        try {
+            TextCriteria text = TextCriteria.forDefaultLanguage().matching(keyword == null ? "" : keyword);
+            Query q = TextQuery.queryText(text).sortByScore();
+            return mongoTemplate.find(q, Item.class);
+        } catch (Exception ex) {
+            // 텍스트 인덱스 부재/오류 시 폴백
+            Query q = new Query(buildKeywordOrRegex(keyword == null ? "" : keyword));
+            return mongoTemplate.find(q, Item.class);
+        }
     }
 
     @Override

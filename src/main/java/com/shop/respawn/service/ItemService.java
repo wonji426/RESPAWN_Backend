@@ -179,6 +179,7 @@ public class ItemService {
         if (categoryIds == null || categoryIds.isEmpty()) {
             return searchItems(keyword);
         }
+        // repository에서 ObjectId 변환 및 IN 처리
         return itemRepository.searchByKeywordAndCategories(
                 keyword == null ? "" : keyword.trim(),
                 categoryIds
