@@ -2,13 +2,16 @@ package com.shop.respawn.controller;
 
 
 import com.shop.respawn.domain.Item;
+import com.shop.respawn.dto.ItemCategoryDto;
 import com.shop.respawn.dto.ItemDto;
 import com.shop.respawn.dto.OffsetPage;
 import com.shop.respawn.dto.OffsetResponse;
+import com.shop.respawn.repository.ItemRepository;
 import com.shop.respawn.service.ImageService;
 import com.shop.respawn.service.ItemService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,6 +29,7 @@ public class ItemController {
 
     private final ItemService itemService;
     private final ImageService imageService;
+    private final ItemRepository itemRepository;
 
     /**
      * 상품 등록
@@ -54,7 +58,7 @@ public class ItemController {
     public ResponseEntity<ItemDto> getItem(@PathVariable String id) {
         Item item = itemService.getItemById(id);
         ItemDto itemDto = new ItemDto(item.getId(), item.getName(), item.getDescription(), item.getDeliveryType(), item.getDeliveryFee(), item.getCompany(),
-                item.getCompanyNumber(), item.getPrice(), item.getStockQuantity(), item.getSellerId(), item.getImageUrl(), item.getCategoryIds(), item.getStatus());
+                item.getCompanyNumber(), item.getPrice(), item.getStockQuantity(), item.getSellerId(), item.getImageUrl(), item.getCategory(), item.getStatus());
         return ResponseEntity.ok(itemDto);
     }
 
@@ -67,13 +71,9 @@ public class ItemController {
             @RequestParam(name = "offset", defaultValue = "0") int offset,
             @RequestParam(name = "limit", defaultValue = "8") int limit
     ) {
-        OffsetPage<Item> result = itemService.findItemsByOffset(category, offset, limit);
+        ItemCategoryDto items = itemService.getItemByCategory(category, offset, limit);
 
-        List<ItemDto> itemDtos = result.items().stream()
-                .map(item -> new ItemDto(item.getId(), item.getName(), item.getDescription(), item.getDeliveryType(), item.getDeliveryFee(), item.getCompany(),
-                        item.getCompanyNumber(), item.getPrice(), item.getStockQuantity(), item.getSellerId(), item.getImageUrl(), item.getCategoryIds()))
-                .toList();
-        return ResponseEntity.ok(new OffsetResponse<>(itemDtos, offset, limit, result.total()));
+        return ResponseEntity.ok(new OffsetResponse<>(items.itemDtos(), offset, limit, items.result().total()));
     }
 
     /**
@@ -97,7 +97,7 @@ public class ItemController {
                         item.getStockQuantity(),
                         item.getSellerId(),
                         item.getImageUrl(),
-                        item.getCategoryIds()))
+                        item.getCategory()))
                 .toList();
 
         return ResponseEntity.ok(itemDtos);
@@ -191,7 +191,7 @@ public class ItemController {
                         item.getStockQuantity(),
                         item.getSellerId(),
                         item.getImageUrl(),
-                        item.getCategoryIds(),
+                        item.getCategory(),
                         item.getStatus()
                 ))
                 .toList();
@@ -221,7 +221,7 @@ public class ItemController {
                         item.getStockQuantity(),
                         item.getSellerId(),
                         item.getImageUrl(),
-                        item.getCategoryIds(),
+                        item.getCategory(),
                         item.getStatus()
                 ))
                 .toList();

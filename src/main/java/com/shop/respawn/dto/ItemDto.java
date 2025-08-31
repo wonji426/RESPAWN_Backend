@@ -3,6 +3,7 @@ package com.shop.respawn.dto;
 import com.shop.respawn.domain.ItemStatus;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.bson.types.ObjectId;
 
 import java.util.List;
 
@@ -32,11 +33,11 @@ public class ItemDto {
 
     private String imageUrl;
 
-    private List<String> categoryIds;
+    private ObjectId category;
 
     private ItemStatus status;
 
-    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, List<String> categoryIds) {
+    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -48,10 +49,10 @@ public class ItemDto {
         this.stockQuantity = stockQuantity;
         this.sellerId = sellerId;
         this.imageUrl = imageUrl;
-        this.categoryIds = categoryIds;
+        this.category = category;
     }
 
-    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, List<String> categoryIds, ItemStatus status) {
+    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, ItemStatus status) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -63,7 +64,8 @@ public class ItemDto {
         this.stockQuantity = stockQuantity;
         this.sellerId = sellerId;
         this.imageUrl = imageUrl;
-        this.categoryIds = categoryIds;
+        this.category = category;
         this.status = status;
     }
+
 }
