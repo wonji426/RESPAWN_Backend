@@ -3,6 +3,7 @@ package com.shop.respawn.domain;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.ArrayList;
@@ -27,10 +28,10 @@ public class Item {
     private long stockQuantity;
     private String sellerId;
     private String imageUrl;
-    private List<String> categoryIds = new ArrayList<>();
+    private ObjectId category;
     private String description;
-
     private ItemStatus status = SALE;
+    private List<String> tags = new ArrayList<>();
 
     //==비즈니스 로직==//
     public void addStock(long quantity) {

@@ -3,13 +3,13 @@ package com.shop.respawn.service;
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.ItemDto;
 import com.shop.respawn.dto.OffsetPage;
+import com.shop.respawn.dto.ItemCategoryDto;
 import com.shop.respawn.repository.ItemRepository;
 import com.shop.respawn.repository.OrderItemRepository;
 import com.shop.respawn.repository.SellerRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.mongodb.core.query.Query;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,7 +44,7 @@ public class ItemService {
             newItem.setStockQuantity(itemDto.getStockQuantity());
             newItem.setSellerId(String.valueOf(sellerId));
             newItem.setImageUrl(itemDto.getImageUrl()); // 대표 사진 경로만 저장
-            newItem.setCategoryIds(itemDto.getCategoryIds());
+            newItem.setCategory(itemDto.getCategory());
             newItem.setDescription(itemDto.getDescription());
             if (newItem.getStatus() == null && ItemStatus.class.isEnum()) {
                 newItem.setStatus(ItemStatus.SALE);
@@ -74,7 +74,7 @@ public class ItemService {
         item.setCompanyNumber(itemDto.getCompanyNumber());
         item.setPrice(itemDto.getPrice());
         item.setStockQuantity(itemDto.getStockQuantity());
-        item.setCategoryIds(itemDto.getCategoryIds());
+        item.setCategory(itemDto.getCategory());
 
         // 이미지 URL은 별도의 로직으로 처리하거나 그대로 유지
         if (itemDto.getImageUrl() != null && !itemDto.getImageUrl().isEmpty()) {
@@ -89,24 +89,19 @@ public class ItemService {
                 .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + id));
     }
 
-    public List<Item> getAllItems() {
-        return itemRepository.findAll();
+    @NotNull
+    public ItemCategoryDto getItemByCategory(String category, int offset, int limit) {
+        OffsetPage<Item> result = itemRepository.findItemsByOffsetUsingName(category, offset, limit);
+
+        List<ItemDto> itemDtos = result.items().stream()
+                .map(item -> new ItemDto(item.getId(), item.getName(), item.getDescription(), item.getDeliveryType(), item.getDeliveryFee(), item.getCompany(),
+                        item.getCompanyNumber(), item.getPrice(), item.getStockQuantity(), item.getSellerId(), item.getImageUrl(), item.getCategory()))
+                .toList();
+        return new ItemCategoryDto(result, itemDtos);
     }
 
-    public OffsetPage<Item> findItemsByOffset(String category, int offset, int limit) {
-        int safeOffset = Math.max(0, offset);
-        int safeLimit = Math.min(Math.max(1, limit), 100);
-
-        Query q = new Query();
-        if (category != null && !category.isBlank()) {
-            q.addCriteria(Criteria.where("categoryIds").is(category));
-        }
-
-        long total = mongoTemplate.count(q, Item.class);
-        q.skip(safeOffset).limit(safeLimit);
-        List<Item> items = mongoTemplate.find(q, Item.class);
-
-        return new OffsetPage<>(items, total);
+    public List<Item> getAllItems() {
+        return itemRepository.findAll();
     }
 
     public List<Item> getItemsBySellerId(String sellerId) {
