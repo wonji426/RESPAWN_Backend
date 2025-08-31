@@ -39,12 +39,42 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
 
     @Override
     public List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds) {
+        // 1) 키워드 OR 조건
         Criteria or = buildKeywordOrRegex(keyword == null ? "" : keyword);
-        List<ObjectId> catIds = categoryIds == null ? List.of() :
-                categoryIds.stream().filter(ObjectId::isValid).map(ObjectId::new).toList();
-        if (catIds.isEmpty()) return mongoTemplate.find(new Query(or), Item.class);
+
+        // 2) 카테고리 이름 → ObjectId 목록 매핑
+        List<ObjectId> catIds = List.of();
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            // categories 컬렉션에서 name IN으로 조회
+            List<Category> cats = mongoTemplate.find(
+                    Query.query(Criteria.where("name").in(categoryIds)),
+                    Category.class,
+                    "categories"
+            );
+
+            catIds = cats.stream()
+                    .map(c -> {
+                        Object idVal = c.getId(); // Category.id 타입이 ObjectId 또는 String일 수 있음
+                        return (idVal instanceof ObjectId oid) ? oid : new ObjectId(idVal.toString());
+                    })
+                    .toList();
+        }
+
+        // 3) 매핑 결과가 없으면 결과 없음 처리(오탐 방지)
+        if (categoryIds != null && !categoryIds.isEmpty() && catIds.isEmpty()) {
+            return List.of(); // 선택한 카테고리 이름과 일치하는 id가 없음 [9]
+        }
+
+        // 4) 카테고리 조건 결합 여부 결정
+        if (catIds.isEmpty()) {
+            // 카테고리 미선택 → 키워드만 검색
+            return mongoTemplate.find(new Query(or), Item.class);
+        }
+
+        // 5) 키워드 OR ∧ category IN 결합
         Criteria cat = Criteria.where("category").in(catIds);
-        return mongoTemplate.find(new Query(new Criteria().andOperator(or, cat)), Item.class);
+        Query q = new Query(new Criteria().andOperator(or, cat)); // $and 결합
+        return mongoTemplate.find(q, Item.class);
     }
 
     @Override
