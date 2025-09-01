@@ -1,10 +1,7 @@
 package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
-import com.shop.respawn.dto.OffsetPage;
-import com.shop.respawn.dto.ReviewLite;
-import com.shop.respawn.dto.ReviewWithItemDto;
-import com.shop.respawn.dto.WritableReviewDto;
+import com.shop.respawn.dto.*;
 import com.shop.respawn.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
@@ -315,13 +312,13 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
-    public OffsetPage<WritableReviewDto> getWritableReviewsPaged(Authentication authentication, int offset, int limit) {
+    public OffsetPageTotal<WritableReviewDto> getWritableReviewsPaged(Authentication authentication, int offset, int limit) {
         Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
 
         long DeliveredTotal = orderItemRepository.countDeliveredItemsByBuyerId(buyerId);
         long WrittenTotal = reviewRepository.countByBuyerId(String.valueOf(buyerId));
         long total = DeliveredTotal - WrittenTotal;
-        if (total == 0) return new OffsetPage<>(List.of(), 0L, 0L);
+        if (total == 0) return new OffsetPageTotal<>(List.of(), 0L, 0L);
 
         List<OrderItem> deliveredOrderItems =
                 orderItemRepository.findDeliveredItemsByBuyerIdPaged(buyerId, offset, limit);
@@ -356,7 +353,7 @@ public class ReviewService {
                     );
                 }).toList();
 
-        return new OffsetPage<>(content, total, WrittenTotal);
+        return new OffsetPageTotal<>(content, total, WrittenTotal);
     }
 
     @Transactional(readOnly = true)

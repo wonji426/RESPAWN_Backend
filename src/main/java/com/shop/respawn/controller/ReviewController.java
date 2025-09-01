@@ -80,7 +80,7 @@ public class ReviewController {
             @RequestParam(defaultValue = "20") int limit    // 최대 개수[27]
     ) {
         // 서비스의 페이징 메서드 호출
-        OffsetPage<WritableReviewDto> page = reviewService.getWritableReviewsPaged(authentication, offset, limit); // 총합 포함
+        OffsetPageTotal<WritableReviewDto> page = reviewService.getWritableReviewsPaged(authentication, offset, limit); // 총합 포함
         return ResponseEntity.ok(new WritableReviewsPageResponse(page.items(), page.total(), page.writtenTotal())); // 간단 DTO로 래핑
     }
 

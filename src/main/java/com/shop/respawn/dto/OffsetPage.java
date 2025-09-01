@@ -2,4 +2,4 @@ package com.shop.respawn.dto;
 
 import java.util.List;
 
-public record OffsetPage<T>(List<T> items, long total, long writtenTotal) {}
+public record OffsetPage<T>(List<T> items, long total) {}
