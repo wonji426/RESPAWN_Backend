@@ -4,14 +4,11 @@ package com.shop.respawn.controller;
 import com.shop.respawn.domain.Item;
 import com.shop.respawn.dto.ItemCategoryDto;
 import com.shop.respawn.dto.ItemDto;
-import com.shop.respawn.dto.OffsetPage;
 import com.shop.respawn.dto.OffsetResponse;
-import com.shop.respawn.repository.ItemRepository;
 import com.shop.respawn.service.ImageService;
 import com.shop.respawn.service.ItemService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,7 +26,6 @@ public class ItemController {
 
     private final ItemService itemService;
     private final ImageService imageService;
-    private final ItemRepository itemRepository;
 
     /**
      * 상품 등록

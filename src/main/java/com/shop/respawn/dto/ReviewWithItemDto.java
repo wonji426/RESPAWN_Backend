@@ -44,4 +44,22 @@ public class ReviewWithItemDto {
             this.price = item.getPrice();
         }
     }
+
+    public ReviewWithItemDto(ReviewLite review, Item item, String maskedUsername, Order order) {
+        this.reviewId = review.getId();
+        this.buyerId = review.getBuyerId();
+        this.maskedUsername = maskedUsername;
+        this.orderItemId = review.getOrderItemId();
+        this.rating = review.getRating();
+        this.content = review.getContent();
+        this.createdDate = review.getCreatedDate();
+        this.orderDate = order != null ? order.getOrderDate() : null;
+
+        if(item != null){
+            this.itemId = item.getId();
+            this.itemName = item.getName();
+            this.imageUrl = item.getImageUrl();
+            this.price = item.getPrice();
+        }
+    }
 }

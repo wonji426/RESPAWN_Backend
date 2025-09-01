@@ -1,6 +1,7 @@
 package com.shop.respawn.repository;
 
 import com.shop.respawn.domain.Review;
+import com.shop.respawn.dto.ReviewLite;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;
@@ -14,5 +15,7 @@ public interface ReviewRepository extends MongoRepository<Review, String> {
 
     List<Review> findByItemIdOrderByCreatedDateDesc(String itemId);
 
-    List<Review> findByBuyerIdOrderByCreatedDateDesc(String buyerId);
+    List<ReviewLite> findByBuyerIdOrderByCreatedDateDesc(String buyerId);
+
+    List<Review> findByOrderItemIdIn(List<String> orderItemIds);
 }

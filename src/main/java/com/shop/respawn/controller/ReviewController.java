@@ -1,5 +1,6 @@
 package com.shop.respawn.controller;
 
+import com.shop.respawn.dto.MyReviewsResponse;
 import com.shop.respawn.dto.ReviewRequestDto;
 import com.shop.respawn.dto.ReviewWithItemDto;
 import com.shop.respawn.dto.WritableReviewDto;
@@ -8,11 +9,10 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static com.shop.respawn.util.SessionUtil.getSellerIdFromSession;
 
@@ -66,20 +66,13 @@ public class ReviewController {
      * 자신이 작성한 리뷰 조회 및 리뷰 작성 가능 여부
      */
     @GetMapping("/my")
-    public ResponseEntity<?> getMyReviews(HttpSession session) {
-        Long buyerId = (Long) session.getAttribute("userId");
-        if (buyerId == null) {
-            return ResponseEntity.status(401).body("로그인이 필요합니다.");
-        }
+    public ResponseEntity<MyReviewsResponse> getMyReviews(Authentication authentication) {
+        // 서비스가 모든 조회/최적화를 담당
+        List<WritableReviewDto> writableItems = reviewService.getWritableReviews(authentication); // 배송완료 + 미작성 목록[22]
+        List<ReviewWithItemDto> writtenReviews = reviewService.getWrittenReviews(authentication); // 작성한 리뷰 목록[22]
 
-        List<WritableReviewDto> writableItems = reviewService.getWritableReviews(buyerId);
-        List<ReviewWithItemDto> writtenReviews = reviewService.getWrittenReviews(buyerId);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("writableItems", writableItems);
-        response.put("writtenReviews", writtenReviews);
-
-        return ResponseEntity.ok(response);
+        MyReviewsResponse body = new MyReviewsResponse(writableItems, writtenReviews);
+        return ResponseEntity.ok(body);
     }
 
     /**
