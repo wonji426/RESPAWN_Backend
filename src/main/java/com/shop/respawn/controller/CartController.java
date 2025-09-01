@@ -3,6 +3,7 @@ package com.shop.respawn.controller;
 import com.shop.respawn.domain.Cart;
 import com.shop.respawn.domain.Item;
 import com.shop.respawn.dto.CartItemDto;
+import com.shop.respawn.dto.CartItemIdsRequest;
 import com.shop.respawn.dto.QuantityChangeRequest;
 import com.shop.respawn.service.CartService;
 import com.shop.respawn.service.ItemService;
@@ -130,21 +131,35 @@ public class CartController {
     }
 
     /**
-     * 장바구니에서 상품 제거
+     * 장바구니에서 선택 상품 제거
      */
-    @DeleteMapping("/items/{cartItemId}")
+    @DeleteMapping("/items/delete")
     public ResponseEntity<String> removeFromCart(
-            @PathVariable Long cartItemId,
+            @RequestBody CartItemIdsRequest request,
             HttpSession session) {
 
         Long buyerId = getBuyerIdFromSession(session);
+        List<Long> ids = request.getCartItemIds();
 
         try {
-            cartService.removeCartItem(buyerId, cartItemId);
+            cartService.removeCartItem(buyerId, ids);
             return ResponseEntity.ok("상품이 장바구니에서 제거되었습니다.");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
+    /**
+     * 장바구니에서 상품 제거
+     */
+    @DeleteMapping
+    public ResponseEntity<String> clearCart(
+            HttpSession session) {
+
+        Long buyerId = getBuyerIdFromSession(session);
+
+        cartService.clearCart(buyerId);
+
+        return ResponseEntity.ok("장바구니를 모두 비웠습니다.");
+    }
 }

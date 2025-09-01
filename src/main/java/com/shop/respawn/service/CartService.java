@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -109,15 +111,15 @@ public class CartService {
     /**
      * 장바구니에서 아이템 제거
      */
-    public void removeCartItem(Long buyerId, Long cartItemId) {
-        Cart cart = cartRepository.findByBuyerId(buyerId)
-                .orElseThrow(() -> new RuntimeException("장바구니를 찾을 수 없습니다"));
+    public void removeCartItem(Long buyerId, List<Long> cartItemIds) {
+        if (cartItemIds == null || cartItemIds.isEmpty()) {
+            return;
+        }
 
-        boolean removed = cart.getCartItems().removeIf(item ->
-                item.getId().equals(cartItemId));
+        int deletedCount = cartRepository.deleteByIdsAndBuyerId(buyerId, cartItemIds);
 
-        if (!removed) {
-            throw new EntityNotFoundException("장바구니 아이템을 찾을 수 없습니다");
+        if (deletedCount == 0) {
+            throw new EntityNotFoundException("삭제할 장바구니 아이템을 찾을 수 없거나, 소유자가 일치하지 않습니다.");
         }
     }
 
