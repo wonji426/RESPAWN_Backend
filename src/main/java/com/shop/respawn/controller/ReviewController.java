@@ -1,9 +1,6 @@
 package com.shop.respawn.controller;
 
-import com.shop.respawn.dto.MyReviewsResponse;
-import com.shop.respawn.dto.ReviewRequestDto;
-import com.shop.respawn.dto.ReviewWithItemDto;
-import com.shop.respawn.dto.WritableReviewDto;
+import com.shop.respawn.dto.*;
 import com.shop.respawn.service.ReviewService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -68,11 +65,33 @@ public class ReviewController {
     @GetMapping("/my")
     public ResponseEntity<MyReviewsResponse> getMyReviews(Authentication authentication) {
         // 서비스가 모든 조회/최적화를 담당
-        List<WritableReviewDto> writableItems = reviewService.getWritableReviews(authentication); // 배송완료 + 미작성 목록[22]
-        List<ReviewWithItemDto> writtenReviews = reviewService.getWrittenReviews(authentication); // 작성한 리뷰 목록[22]
+        List<WritableReviewDto> writableItems = reviewService.getWritableReviews(authentication); // 배송완료 + 미작성 목록
+        List<ReviewWithItemDto> writtenReviews = reviewService.getWrittenReviews(authentication); // 작성한 리뷰 목록
 
         MyReviewsResponse body = new MyReviewsResponse(writableItems, writtenReviews);
         return ResponseEntity.ok(body);
+    }
+
+    // 작성 가능 리뷰 페이징
+    @GetMapping("/my/writable")
+    public ResponseEntity<WritableReviewsPageResponse> getMyWritableReviewsPaged(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int offset,   // 시작 인덱스[27]
+            @RequestParam(defaultValue = "20") int limit    // 최대 개수[27]
+    ) {
+        // 서비스의 페이징 메서드 호출
+        OffsetPage<WritableReviewDto> page = reviewService.getWritableReviewsPaged(authentication, offset, limit); // 총합 포함
+        return ResponseEntity.ok(new WritableReviewsPageResponse(page.items(), page.total())); // 간단 DTO로 래핑
+    }
+
+    @GetMapping("/my/written")
+    public ResponseEntity<WrittenReviewsPageResponse> getMyWrittenReviewsPaged(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        OffsetPage<ReviewWithItemDto> page = reviewService.getWrittenReviewsPaged(authentication, offset, limit); // 서비스 호출
+        return ResponseEntity.ok(new WrittenReviewsPageResponse(page.items(), page.total())); // items/total 응답
     }
 
     /**

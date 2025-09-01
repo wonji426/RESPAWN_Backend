@@ -7,6 +7,10 @@ import com.shop.respawn.dto.ReviewWithItemDto;
 import com.shop.respawn.dto.WritableReviewDto;
 import com.shop.respawn.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +34,7 @@ public class ReviewService {
     private final OrderItemRepository orderItemRepository; // RDBMS 주문 아이템
     private final ItemService itemService;
     private final ItemRepository itemRepository;
+    private final MongoTemplate mongoTemplate;
 
     /**
      * 리뷰 작성
@@ -313,7 +318,9 @@ public class ReviewService {
     public OffsetPage<WritableReviewDto> getWritableReviewsPaged(Authentication authentication, int offset, int limit) {
         Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
 
-        long total = orderItemRepository.countDeliveredItemsByBuyerId(buyerId);
+        long DeliveredTotal = orderItemRepository.countDeliveredItemsByBuyerId(buyerId);
+        long WrittenTotal = reviewRepository.countByBuyerId(String.valueOf(buyerId));
+        long total = DeliveredTotal - WrittenTotal;
         if (total == 0) return new OffsetPage<>(List.of(), 0L);
 
         List<OrderItem> deliveredOrderItems =
@@ -350,5 +357,74 @@ public class ReviewService {
                 }).toList();
 
         return new OffsetPage<>(content, total);
+    }
+
+    @Transactional(readOnly = true)
+    public OffsetPage<ReviewWithItemDto> getWrittenReviewsPaged(Authentication authentication, int offset, int limit) {
+        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName()); // 로그인 사용자 id[22]
+
+        // 0) 입력 보정
+        int safeOffset = Math.max(0, offset);
+        int safeLimit  = Math.min(Math.max(1, limit), 100); // 상한 100 권장[35]
+
+        // 1) total count (MongoDB)
+        // Spring Data MongoRepository에는 countBy... 쿼리 메서드를 추가하거나, MongoTemplate로 count 수행
+        long total = reviewRepository.countByBuyerId(String.valueOf(buyerId));  // 전체 작성 리뷰 수
+
+        if (total == 0) {
+            return new OffsetPage<>(List.of(), 0L);
+        }
+
+        // 2) MongoDB에서 buyerId로 정렬 + 페이징 조회
+        Query reviewQuery = new Query(Criteria.where("buyerId").is(String.valueOf(buyerId)))
+                .with(Sort.by(Sort.Direction.DESC, "createdDate")) // 최신순[22]
+                .skip(safeOffset)
+                .limit(safeLimit);
+        List<Review> pageReviews = mongoTemplate.find(reviewQuery, Review.class, "reviews"); // 페이징 수집[34]
+
+        if (pageReviews.isEmpty()) {
+            return new OffsetPage<>(List.of(), total);
+        }
+
+        // 3) 아이템 배치 조회 (MongoDB)
+        List<String> itemIds = pageReviews.stream().map(Review::getItemId).distinct().toList();
+        Map<String, Item> itemMap = itemRepository.findAllById(itemIds).stream()
+                .collect(Collectors.toMap(Item::getId, it -> it)); // 배치 조회[22]
+
+        // 4) OrderItem + Order + Delivery 배치 조회 (RDB, QueryDSL fetch join)
+        List<Long> orderItemIds = pageReviews.stream()
+                .map(Review::getOrderItemId)
+                .map(Long::valueOf)
+                .distinct()
+                .toList();
+        List<OrderItem> orderItems = orderItemRepository.findAllByIdInWithOrderAndDelivery(orderItemIds); // fetch join[16]
+        Map<Long, OrderItem> orderItemMap = orderItems.stream()
+                .collect(Collectors.toMap(OrderItem::getId, oi -> oi));
+
+        // 5) username 마스킹용 조회
+        String maskedUsername;
+        try {
+            String buyerUsername = buyerRepository.findById(buyerId)
+                    .map(Buyer::getUsername)
+                    .orElse("알 수 없는 사용자");
+            maskedUsername = maskMiddleFourChars(buyerUsername);
+        } catch (Exception e) {
+            maskedUsername = "알 수 없는 사용자";
+        }
+
+        // 6) DTO 매핑 (페이지 범위 내에서만)
+        String finalMaskedUsername = maskedUsername;
+        List<ReviewWithItemDto> content = pageReviews.stream().map(rv -> {
+            Item item = itemMap.get(rv.getItemId());
+            OrderItem oi = orderItemMap.get(toLongSafe(rv.getOrderItemId()));
+            Order ord = (oi != null) ? oi.getOrder() : null;
+            return new ReviewWithItemDto(rv, item, finalMaskedUsername, ord); // 생성자 오버로드 활용[11]
+        }).toList();
+
+        return new OffsetPage<>(content, total);
+    }
+
+    private static Long toLongSafe(String s) {
+        try { return Long.valueOf(s); } catch (Exception e) { return null; }
     }
 }

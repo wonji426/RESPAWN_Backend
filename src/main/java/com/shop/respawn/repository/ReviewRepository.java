@@ -18,4 +18,6 @@ public interface ReviewRepository extends MongoRepository<Review, String> {
     List<ReviewLite> findByBuyerIdOrderByCreatedDateDesc(String buyerId);
 
     List<Review> findByOrderItemIdIn(List<String> orderItemIds);
+
+    long countByBuyerId(String buyerId);
 }
