@@ -31,11 +31,13 @@ public class OrderService {
     private final BuyerRepository buyerRepository;
     private final ItemRepository itemRepository;
     private final AddressRepository addressRepository;
-    private final ItemService itemService;
     private final OrderItemRepository orderItemRepository;
     private final PaymentRepository paymentRepository;
-    private final LedgerPointService ledgerPointService;
     private final PointLedgerRepository pointLedgerRepository;
+
+    private final LedgerPointService ledgerPointService;
+    private final ItemService itemService;
+    private final CouponService couponService;
 
     /**
      * 임시 주문 상세 조회
@@ -254,8 +256,17 @@ public class OrderService {
             orderItem.setDelivery(delivery);
         }
 
+        String couponCode = orderRequest.getCouponCode();
+        System.out.println("couponCode = " + couponCode);
+        long couponDiscount = 0L;
+        if (couponCode != null && !couponCode.isBlank()) {
+            // 상품 총액 계산을 위해 orderItems를 넘겨 내부에서 상품총액 산출
+            couponDiscount = computeCouponDiscount(order.getOrderItems(), couponCode);
+            System.out.println("couponDiscount = " + couponDiscount);
+        }
+
         // 3. 결제 정보 설정 (총금액, 주문명, pgOrderId 등)
-        setPaymentInfoFromOrderItems(order, order.getOrderItems(), order.getUsedPointAmount());
+        setPaymentInfoFromOrderItems(order, order.getOrderItems(), order.getUsedPointAmount(), couponDiscount);
 
         // 4. 재고 차감
         reduceStockFromOrderItems(order.getOrderItems());
@@ -291,6 +302,14 @@ public class OrderService {
 
     }
 
+    private long computeCouponDiscount(List<OrderItem> orderItems, String couponCode) {
+        long totalItemAmount = orderItems.stream()
+                .mapToLong(oi -> oi.getOrderPrice() * oi.getCount())
+                .sum();
+        // 검증 및 사용 처리 -> 할인 금액 반환
+        return couponService.applyCouponIfValid(couponCode, totalItemAmount);
+    }
+
     /**
      * OrderItem 기반 재고 확인
      */
@@ -321,7 +340,8 @@ public class OrderService {
     /**
      * OrderItem기반 주문 정보 설정
      */
-    private void setPaymentInfoFromOrderItems(Order order, List<OrderItem> orderItems, Long usePointAmount) {
+    private void setPaymentInfoFromOrderItems(Order order, List<OrderItem> orderItems, Long usePointAmount,
+                                              Long couponDiscount) {
         // 1. 상품 총 금액 계산
         Long totalItemAmount = orderItems.stream()
                 .mapToLong(orderItem -> orderItem.getOrderPrice() * orderItem.getCount())
@@ -341,7 +361,8 @@ public class OrderService {
                 .sum();
 
         // 3. 원래 총 금액 (포인트 사용 전)
-        Long originalAmount = totalItemAmount + totalDeliveryFee;
+        // 3. 원래 총 금액 = (상품총액 + 배송비) - 쿠폰
+        long originalAmount = Math.max(0L, totalItemAmount + totalDeliveryFee - (couponDiscount == null ? 0L : couponDiscount));
 
         // 4. 포인트 사용 정보 설정
         if (usePointAmount > 0) {

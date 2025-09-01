@@ -2,10 +2,7 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.AddressDto;
-import com.shop.respawn.repository.AdminRepository;
-import com.shop.respawn.repository.BuyerRepository;
-import com.shop.respawn.repository.OrderItemRepository;
-import com.shop.respawn.repository.SellerRepository;
+import com.shop.respawn.repository.*;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,6 +21,7 @@ public class MyService {
     private final AdminRepository adminRepository;
     private final AddressService addressService;
     private final OrderItemRepository orderItemRepository;
+    private final CouponRepository couponRepository;
     private final BCryptPasswordEncoder encoder;
 
     private final EntityManager em;
@@ -67,6 +65,13 @@ public class MyService {
 
         addressService.createAddress(1L, addressDto1);
         addressService.createAddress(1L, addressDto2);
+
+        Coupon coupon1 = Coupon.createCoupon(buyer, "신규 가입 축하 쿠폰(10,000원)", 10_000L, LocalDateTime.now().plusDays(30));
+        Coupon coupon2 = Coupon.createCoupon(buyer, "신규 가입 축하 쿠폰(5,000원)", 5_000L, LocalDateTime.now().plusDays(30));
+        couponRepository.save(coupon1);
+        couponRepository.save(coupon2);
+        em.persist(coupon1);
+        em.persist(coupon2);
 
         // 주문 데이터 생성 예시
         Item item1 = new Item();

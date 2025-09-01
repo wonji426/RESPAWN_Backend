@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static jakarta.persistence.FetchType.LAZY;
@@ -45,5 +44,29 @@ public class Coupon {
 
     public void markUsed() {
         this.used = true;
+    }
+
+    public static Coupon createCoupon(Buyer buyer, String name, Long couponAmount, LocalDateTime expiresAt) {
+        if (buyer == null) {
+            throw new IllegalArgumentException("buyer는 null일 수 없습니다.");
+        }
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("name은 비어 있을 수 없습니다.");
+        }
+        if (couponAmount == null || couponAmount <= 0L) {
+            throw new IllegalArgumentException("couponAmount는 0보다 커야 합니다.");
+        }
+        if (expiresAt == null || !expiresAt.isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("expiresAt은 현재 시각 이후여야 합니다.");
+        }
+
+        return Coupon.builder()
+                .buyer(buyer)
+                .code(java.util.UUID.randomUUID().toString()) // length=36, unique 충족
+                .name(name)
+                .couponAmount(couponAmount)
+                .expiresAt(expiresAt)
+                .used(false)
+                .build();
     }
 }

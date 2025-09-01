@@ -18,4 +18,7 @@ public class OrderRequestDto {
 
     // 포인트 사용 금액
     private Long usePointAmount;
+
+    // 쿠폰 사용
+    private String couponCode;
 }
