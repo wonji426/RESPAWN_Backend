@@ -81,7 +81,7 @@ public class ReviewController {
     ) {
         // 서비스의 페이징 메서드 호출
         OffsetPage<WritableReviewDto> page = reviewService.getWritableReviewsPaged(authentication, offset, limit); // 총합 포함
-        return ResponseEntity.ok(new WritableReviewsPageResponse(page.items(), page.total())); // 간단 DTO로 래핑
+        return ResponseEntity.ok(new WritableReviewsPageResponse(page.items(), page.total(), page.writtenTotal())); // 간단 DTO로 래핑
     }
 
     @GetMapping("/my/written")

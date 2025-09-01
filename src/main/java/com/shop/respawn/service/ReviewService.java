@@ -321,7 +321,7 @@ public class ReviewService {
         long DeliveredTotal = orderItemRepository.countDeliveredItemsByBuyerId(buyerId);
         long WrittenTotal = reviewRepository.countByBuyerId(String.valueOf(buyerId));
         long total = DeliveredTotal - WrittenTotal;
-        if (total == 0) return new OffsetPage<>(List.of(), 0L);
+        if (total == 0) return new OffsetPage<>(List.of(), 0L, 0L);
 
         List<OrderItem> deliveredOrderItems =
                 orderItemRepository.findDeliveredItemsByBuyerIdPaged(buyerId, offset, limit);
@@ -356,7 +356,7 @@ public class ReviewService {
                     );
                 }).toList();
 
-        return new OffsetPage<>(content, total);
+        return new OffsetPage<>(content, total, WrittenTotal);
     }
 
     @Transactional(readOnly = true)
