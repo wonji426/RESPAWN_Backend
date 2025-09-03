@@ -112,6 +112,20 @@ public class CouponService {
         return CouponValidationResult.ok(); // 비즈니스 결과 반환 [9]
     }
 
+    public CouponValidationResult cancelApplicableForOrder(Authentication authentication, Long orderId) {
+        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("주문을 찾을 수 없습니다: " + orderId)); // 도메인 조회 [9]
+        order.validateOwner(buyerId); // 비즈니스 규칙: 소유자 검증 [1]
+
+        order.setTotalAmount(order.getOriginalAmount());
+        order.setOriginalAmount(0L);
+
+        // 5) 통과
+        return CouponValidationResult.ok(); // 비즈니스 결과 반환 [9]
+    }
+
     // 쿠폰 코드 중복 검사
     private String uniqueCode() {
         String code;

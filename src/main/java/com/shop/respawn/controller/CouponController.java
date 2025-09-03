@@ -40,6 +40,20 @@ public class CouponController {
         return ResponseEntity.ok(OrderCouponCheckResponse.ok()); // 성공 응답 [6][9]
     }
 
+    @GetMapping("/cancel")
+    public ResponseEntity<OrderCouponCheckResponse> cancelOnOrder(
+            @RequestParam("orderId") Long orderId,
+            Authentication authentication
+    ) {
+
+        CouponValidationResult result = couponService.cancelApplicableForOrder(authentication, orderId);
+
+        if (!result.isOk()) {
+            return ResponseEntity.ok(OrderCouponCheckResponse.fail(result.getMessage()));
+        }
+        return ResponseEntity.ok(OrderCouponCheckResponse.ok()); // 성공 응답 [6][9]
+    }
+
     /**
      * 구매자 ID로 쿠폰 목록 조회
      * @return 쿠폰 목록
