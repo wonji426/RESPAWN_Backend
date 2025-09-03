@@ -12,5 +12,5 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
 
     Optional<Coupon> findByCode(String code);
 
-    List<Coupon> findByBuyerAndUsedFalseAndExpiresAtAfter(Buyer buyer, LocalDateTime now);
+    List<Coupon> findAllByBuyerId(Long buyerId);
 }

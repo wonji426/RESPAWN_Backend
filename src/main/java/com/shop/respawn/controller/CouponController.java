@@ -1,15 +1,16 @@
 package com.shop.respawn.controller;
 
+import com.shop.respawn.domain.Coupon;
+import com.shop.respawn.dto.CouponDTO;
 import com.shop.respawn.dto.coupon.CouponValidationResult;
 import com.shop.respawn.dto.coupon.OrderCouponCheckResponse;
 import com.shop.respawn.service.CouponService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -37,5 +38,15 @@ public class CouponController {
             return ResponseEntity.ok(OrderCouponCheckResponse.fail(result.getMessage())); // HTTP 어댑팅 [9]
         }
         return ResponseEntity.ok(OrderCouponCheckResponse.ok()); // 성공 응답 [6][9]
+    }
+
+    /**
+     * 구매자 ID로 쿠폰 목록 조회
+     * @return 쿠폰 목록
+     */
+    @GetMapping("/view")
+    public ResponseEntity<List<CouponDTO>> getCouponsByBuyerId(Authentication authentication) {
+        List<CouponDTO> couponDTOs = couponService.getCouponDTOsByBuyerId(authentication);
+        return ResponseEntity.ok(couponDTOs);
     }
 }

@@ -2,6 +2,7 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.Grade;
 import com.shop.respawn.domain.Order;
+import com.shop.respawn.dto.CouponDTO;
 import com.shop.respawn.dto.coupon.CouponValidationResult;
 import com.shop.respawn.repository.OrderRepository;
 import com.shop.respawn.util.CouponPolicy;
@@ -11,12 +12,13 @@ import com.shop.respawn.repository.CouponRepository;
 import com.shop.respawn.repository.BuyerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -117,5 +119,14 @@ public class CouponService {
             code = CouponPolicy.generateCode();
         } while (couponRepository.findByCode(code).isPresent());
         return code;
+    }
+
+    @Transactional(readOnly = true)
+    public List<CouponDTO> getCouponDTOsByBuyerId(Authentication authentication) {
+        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+        List<Coupon> coupons = couponRepository.findAllByBuyerId(buyerId);
+        return coupons.stream()
+                .map(CouponDTO::fromEntity)
+                .collect(Collectors.toList());
     }
 }
