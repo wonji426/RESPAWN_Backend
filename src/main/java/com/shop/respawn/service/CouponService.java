@@ -138,7 +138,7 @@ public class CouponService {
     @Transactional(readOnly = true)
     public List<CouponDTO> getCouponDTOsByBuyerId(Authentication authentication) {
         Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
-        List<Coupon> coupons = couponRepository.findAllByBuyerId(buyerId);
+        List<Coupon> coupons = couponRepository.findAllUnusedByBuyerId(buyerId);
         return coupons.stream()
                 .map(CouponDTO::fromEntity)
                 .collect(Collectors.toList());
