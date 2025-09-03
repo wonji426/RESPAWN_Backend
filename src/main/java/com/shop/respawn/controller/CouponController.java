@@ -4,8 +4,10 @@ import com.shop.respawn.domain.Coupon;
 import com.shop.respawn.dto.CouponDTO;
 import com.shop.respawn.dto.coupon.CouponValidationResult;
 import com.shop.respawn.dto.coupon.OrderCouponCheckResponse;
+import com.shop.respawn.exception.ApiMessage;
 import com.shop.respawn.service.CouponService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -40,8 +42,8 @@ public class CouponController {
         return ResponseEntity.ok(OrderCouponCheckResponse.ok()); // 성공 응답 [6][9]
     }
 
-    @GetMapping("/cancel")
-    public ResponseEntity<OrderCouponCheckResponse> cancelOnOrder(
+    @PostMapping("/cancel")
+    public ResponseEntity<?> cancelOnOrder(
             @RequestParam("orderId") Long orderId,
             Authentication authentication
     ) {
@@ -49,9 +51,9 @@ public class CouponController {
         CouponValidationResult result = couponService.cancelApplicableForOrder(authentication, orderId);
 
         if (!result.isOk()) {
-            return ResponseEntity.ok(OrderCouponCheckResponse.fail(result.getMessage()));
+            return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(OrderCouponCheckResponse.ok()); // 성공 응답 [6][9]
+        return ResponseEntity.ok().body(HttpStatus.NO_CONTENT); // 성공 응답 [6][9]
     }
 
     /**
