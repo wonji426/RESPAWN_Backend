@@ -2,6 +2,9 @@ package com.shop.respawn.repository;
 
 import com.shop.respawn.domain.Review;
 import com.shop.respawn.dto.ReviewLite;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;
@@ -15,9 +18,7 @@ public interface ReviewRepository extends MongoRepository<Review, String> {
 
     List<Review> findByItemIdOrderByCreatedDateDesc(String itemId);
 
-    List<ReviewLite> findByBuyerIdOrderByCreatedDateDesc(String buyerId);
+    Page<Review> findByBuyerIdOrderByCreatedDateDesc(String buyerId, Pageable pageable);
 
-    List<Review> findByOrderItemIdIn(List<String> orderItemIds);
-
-    long countByBuyerId(String buyerId);
+    List<Review> findByBuyerId(String buyerId);
 }

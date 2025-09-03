@@ -4,10 +4,9 @@ import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.*;
 import com.shop.respawn.repository.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,8 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.shop.respawn.util.MaskingUtil.maskMiddleFourChars;
@@ -30,8 +27,6 @@ public class ReviewService {
     private final BuyerRepository buyerRepository;     // RDBMS 구매자
     private final OrderItemRepository orderItemRepository; // RDBMS 주문 아이템
     private final ItemService itemService;
-    private final ItemRepository itemRepository;
-    private final MongoTemplate mongoTemplate;
 
     /**
      * 리뷰 작성
@@ -159,7 +154,7 @@ public class ReviewService {
                 .isPresent();
     }
 
-    private List<ReviewWithItemDto> convertReviewsToDtos(List<Review> reviews, List<Item> relatedItems) {
+    public List<ReviewWithItemDto> convertReviewsToDtos(List<Review> reviews, List<Item> relatedItems) {
         return reviews.stream()
                 .map(review -> {
                     // 리뷰 작성자 ID
@@ -198,230 +193,63 @@ public class ReviewService {
                     // item이 이미 넘어온 relatedItems 단건(예: getReviewsByItemId)일 경우 처리 예외는 caller에서 조절
                     // 리뷰의 itemId와 relatedItems의 itemId가 1:1일 경우 item=null 대신 첫개 item 전달할 수도 있음
 
-                    ReviewWithItemDto reviewWithItemDto = new ReviewWithItemDto(review, item, maskedUsername,  order);
-                    System.out.println("reviewWithItemDto = " + reviewWithItemDto);
-                    return reviewWithItemDto;
+                    return new ReviewWithItemDto(review, item, maskedUsername,  order);
                 })
                 .collect(Collectors.toList());
     }
 
     /**
-     * 리뷰 작성 가능 여부
+     * 구매자가 작성한 리뷰 목록 페이징 조회 (상품 정보 포함)
      */
-    @Transactional(readOnly = true)
-    public List<WritableReviewDto> getWritableReviews(Authentication authentication) {
+    public Page<ReviewWithItemDto> getReviewsByBuyerId(Authentication authentication, Pageable pageable) {
+
         Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
 
-        // 1) 배송 완료 OrderItem + Order + Delivery를 fetch join으로 한 번에
-        List<OrderItem> deliveredOrderItems =
-                orderItemRepository.findDeliveredItemsWithOrderAndDeliveryByBuyerId(buyerId);
+        // 1. 리뷰 페이징 조회
+        Page<Review> reviewPage = reviewRepository.findByBuyerIdOrderByCreatedDateDesc(String.valueOf(buyerId), pageable);
 
-        if (deliveredOrderItems.isEmpty()) {
-            return Collections.emptyList();
+        if (reviewPage.isEmpty()) {
+            return Page.empty();
         }
 
-        // 2) 리뷰 존재 여부를 MongoDB에서 in 한 번으로
-        List<String> orderItemIds = deliveredOrderItems.stream()
-                .map(oi -> String.valueOf(oi.getId()))
-                .toList();
-
-        List<Review> existingReviews = reviewRepository.findByOrderItemIdIn(orderItemIds);
-        Set<String> reviewedOrderItemIdSet = existingReviews.stream()
-                .map(Review::getOrderItemId)
-                .collect(Collectors.toSet());
-
-        // 3) 필요한 아이템만 모아 MongoDB에서 배치 조회
-        List<String> itemIds = deliveredOrderItems.stream()
-                .map(OrderItem::getItemId)
+        // 2. 리뷰에 포함된 itemId 리스트 추출 (중복 제거)
+        List<String> itemIds = reviewPage.stream()
+                .map(Review::getItemId)
                 .distinct()
-                .toList();
+                .collect(Collectors.toList());
 
-        List<Item> items = itemRepository.findAllById(itemIds);
-        Map<String, Item> itemMap = items.stream()
-                .collect(Collectors.toMap(Item::getId, it -> it));
+        // 3. 관련 상품 리스트 조회
+        List<Item> relatedItems = itemService.getItemsByIds(itemIds);
 
-        // 4) 스트림 변환 (exists는 Set 조회로 O(1))
-        return deliveredOrderItems.stream()
-                .filter(orderItem -> !reviewedOrderItemIdSet.contains(String.valueOf(orderItem.getId())))
-                .map(orderItem -> {
-                    Item item = itemMap.get(orderItem.getItemId());
-                    boolean exists = reviewedOrderItemIdSet.contains(String.valueOf(orderItem.getId()));
-                    return new WritableReviewDto(
-                            orderItem.getOrder().getId(),
-                            String.valueOf(orderItem.getId()),
-                            item != null ? item.getName() : null,
-                            item != null ? item.getImageUrl() : null,
-                            exists
-                    );
-                })
-                .toList();
+        // 4. DTO 변환
+        List<ReviewWithItemDto> dtos = convertReviewsToDtos(reviewPage.getContent(), relatedItems);
+
+        // 5. Page<ReviewWithItemDto>로 변환하여 반환
+        return new PageImpl<>(dtos, pageable, reviewPage.getTotalElements());
     }
 
     /**
-     * 리뷰 조회
+     * 작성 가능한 리뷰 목록 (배송 완료 & 미작성) 페이징 조회
      */
-    @Transactional(readOnly = true)
-    public List<ReviewWithItemDto> getWrittenReviews(Authentication authentication) {
+    public Page<OrderItemDto> getWritableReviews(Authentication authentication, Pageable pageable) {
         Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
 
-        // 1) 리뷰 목록(프로젝션 사용 가능)
-        List<ReviewLite> reviews = reviewRepository.findByBuyerIdOrderByCreatedDateDesc(String.valueOf(buyerId));
-
-        if (reviews.isEmpty()) return List.of();
-
-        // 2) MongoDB 아이템 배치 조회
-        List<String> itemIds = reviews.stream()
-                .map(ReviewLite::getItemId)
-                .distinct()
-                .toList();
-        List<Item> items = itemRepository.findAllById(itemIds);
-        Map<String, Item> itemMap = items.stream()
-                .collect(Collectors.toMap(Item::getId, it -> it));
-
-        // 3) OrderItem + Order + Delivery를 QueryDSL fetch join으로 배치 조회
-        List<Long> orderItemIds = reviews.stream()
-                .map(ReviewLite::getOrderItemId)
-                .map(Long::valueOf)
-                .distinct()
-                .toList();
-
-        List<OrderItem> orderItems = orderItemRepository.findAllByIdInWithOrderAndDelivery(orderItemIds);
-        Map<Long, OrderItem> orderItemMap = orderItems.stream()
-                .collect(Collectors.toMap(OrderItem::getId, oi -> oi));
-
-        // 4) DTO 매핑 (convertReviewsToDtos 내부에서 개별 조회하지 않도록 개선)
-        return reviews.stream()
-                .map(rv -> {
-                    Item item = itemMap.get(rv.getItemId());
-                    OrderItem oi = orderItemMap.get(Long.valueOf(rv.getOrderItemId()));
-                    Order ord = (oi != null) ? oi.getOrder() : null;
-
-                    String maskedUsername;
-                    try {
-                        String buyerUsername = buyerRepository.findById(Long.valueOf(rv.getBuyerId()))
-                                .map(Buyer::getUsername)
-                                .orElse("알 수 없는 사용자");
-                        maskedUsername = maskMiddleFourChars(buyerUsername);
-                    } catch (NumberFormatException e) {
-                        maskedUsername = "알 수 없는 사용자";
-                    }
-
-                    return new ReviewWithItemDto(rv, item, maskedUsername, ord);
-                })
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public OffsetPageTotal<WritableReviewDto> getWritableReviewsPaged(Authentication authentication, int offset, int limit) {
-        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
-
-        long DeliveredTotal = orderItemRepository.countDeliveredItemsByBuyerId(buyerId);
-        long WrittenTotal = reviewRepository.countByBuyerId(String.valueOf(buyerId));
-        long total = DeliveredTotal - WrittenTotal;
-        if (total == 0) return new OffsetPageTotal<>(List.of(), 0L, 0L);
-
-        List<OrderItem> deliveredOrderItems =
-                orderItemRepository.findDeliveredItemsByBuyerIdPaged(buyerId, offset, limit);
-
-        List<String> orderItemIds = deliveredOrderItems.stream()
-                .map(oi -> String.valueOf(oi.getId()))
-                .toList();
-
-        List<Review> existingReviews = reviewRepository.findByOrderItemIdIn(orderItemIds);
-        Set<String> reviewed = existingReviews.stream()
+        // 이미 리뷰 작성된 주문아이템 ID 리스트 조회
+        List<String> reviewedOrderItemIdsStr = reviewRepository.findByBuyerId(String.valueOf(buyerId)).stream()
                 .map(Review::getOrderItemId)
-                .collect(Collectors.toSet());
-
-        List<String> itemIds = deliveredOrderItems.stream()
-                .map(OrderItem::getItemId)
-                .distinct()
                 .toList();
-        Map<String, Item> itemMap = itemRepository.findAllById(itemIds).stream()
-                .collect(Collectors.toMap(Item::getId, it -> it));
 
-        List<WritableReviewDto> content = deliveredOrderItems.stream()
-                .filter(oi -> !reviewed.contains(String.valueOf(oi.getId())))
-                .map(oi -> {
-                    Item item = itemMap.get(oi.getItemId());
-                    boolean exists = reviewed.contains(String.valueOf(oi.getId()));
-                    return new WritableReviewDto(
-                            oi.getOrder().getId(),
-                            String.valueOf(oi.getId()),
-                            item != null ? item.getName() : null,
-                            item != null ? item.getImageUrl() : null,
-                            exists
-                    );
-                }).toList();
+        List<Long> reviewedOrderItemIds = reviewedOrderItemIdsStr.isEmpty()
+                ? List.of(-1L) // 빈 리스트 회피용 미존재 값
+                : reviewedOrderItemIdsStr.stream().map(Long::valueOf).toList();
 
-        return new OffsetPageTotal<>(content, total, WrittenTotal);
-    }
+        Page<OrderItem> deliveredOrderItems = orderItemRepository
+                .findAllByOrder_Buyer_IdAndDelivery_StatusAndIdNotIn(buyerId, DeliveryStatus.DELIVERED, reviewedOrderItemIds, pageable);
 
-    @Transactional(readOnly = true)
-    public OffsetPage<ReviewWithItemDto> getWrittenReviewsPaged(Authentication authentication, int offset, int limit) {
-        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName()); // 로그인 사용자 id[22]
-
-        // 0) 입력 보정
-        int safeOffset = Math.max(0, offset);
-        int safeLimit  = Math.min(Math.max(1, limit), 100); // 상한 100 권장[35]
-
-        // 1) total count (MongoDB)
-        // Spring Data MongoRepository에는 countBy... 쿼리 메서드를 추가하거나, MongoTemplate로 count 수행
-        long total = reviewRepository.countByBuyerId(String.valueOf(buyerId));  // 전체 작성 리뷰 수
-
-        if (total == 0) {
-            return new OffsetPage<>(List.of(), 0L);
-        }
-
-        // 2) MongoDB에서 buyerId로 정렬 + 페이징 조회
-        Query reviewQuery = new Query(Criteria.where("buyerId").is(String.valueOf(buyerId)))
-                .with(Sort.by(Sort.Direction.DESC, "createdDate")) // 최신순[22]
-                .skip(safeOffset)
-                .limit(safeLimit);
-        List<Review> pageReviews = mongoTemplate.find(reviewQuery, Review.class, "reviews"); // 페이징 수집[34]
-
-        if (pageReviews.isEmpty()) {
-            return new OffsetPage<>(List.of(), total);
-        }
-
-        // 3) 아이템 배치 조회 (MongoDB)
-        List<String> itemIds = pageReviews.stream().map(Review::getItemId).distinct().toList();
-        Map<String, Item> itemMap = itemRepository.findAllById(itemIds).stream()
-                .collect(Collectors.toMap(Item::getId, it -> it)); // 배치 조회[22]
-
-        // 4) OrderItem + Order + Delivery 배치 조회 (RDB, QueryDSL fetch join)
-        List<Long> orderItemIds = pageReviews.stream()
-                .map(Review::getOrderItemId)
-                .map(Long::valueOf)
-                .distinct()
+        List<OrderItemDto> writableDtos = deliveredOrderItems.stream()
+                .map(OrderItemDto::new)
                 .toList();
-        List<OrderItem> orderItems = orderItemRepository.findAllByIdInWithOrderAndDelivery(orderItemIds); // fetch join[16]
-        Map<Long, OrderItem> orderItemMap = orderItems.stream()
-                .collect(Collectors.toMap(OrderItem::getId, oi -> oi));
 
-        // 5) username 마스킹용 조회
-        String maskedUsername;
-        try {
-            String buyerUsername = buyerRepository.findById(buyerId)
-                    .map(Buyer::getUsername)
-                    .orElse("알 수 없는 사용자");
-            maskedUsername = maskMiddleFourChars(buyerUsername);
-        } catch (Exception e) {
-            maskedUsername = "알 수 없는 사용자";
-        }
-
-        // 6) DTO 매핑 (페이지 범위 내에서만)
-        String finalMaskedUsername = maskedUsername;
-        List<ReviewWithItemDto> content = pageReviews.stream().map(rv -> {
-            Item item = itemMap.get(rv.getItemId());
-            OrderItem oi = orderItemMap.get(toLongSafe(rv.getOrderItemId()));
-            Order ord = (oi != null) ? oi.getOrder() : null;
-            return new ReviewWithItemDto(rv, item, finalMaskedUsername, ord); // 생성자 오버로드 활용[11]
-        }).toList();
-
-        return new OffsetPage<>(content, total);
-    }
-
-    private static Long toLongSafe(String s) {
-        try { return Long.valueOf(s); } catch (Exception e) { return null; }
+        return new PageImpl<>(writableDtos, pageable, deliveredOrderItems.getTotalElements());
     }
 }

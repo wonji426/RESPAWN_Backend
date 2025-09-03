@@ -5,6 +5,7 @@ import com.shop.respawn.service.ReviewService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -59,40 +60,6 @@ public class ReviewController {
         }
     }
 
-    /**
-     * 자신이 작성한 리뷰 조회 및 리뷰 작성 가능 여부
-     */
-    @GetMapping("/my")
-    public ResponseEntity<MyReviewsResponse> getMyReviews(Authentication authentication) {
-        // 서비스가 모든 조회/최적화를 담당
-        List<WritableReviewDto> writableItems = reviewService.getWritableReviews(authentication); // 배송완료 + 미작성 목록
-        List<ReviewWithItemDto> writtenReviews = reviewService.getWrittenReviews(authentication); // 작성한 리뷰 목록
-
-        MyReviewsResponse body = new MyReviewsResponse(writableItems, writtenReviews);
-        return ResponseEntity.ok(body);
-    }
-
-    // 작성 가능 리뷰 페이징
-    @GetMapping("/my/writable")
-    public ResponseEntity<WritableReviewsPageResponse> getMyWritableReviewsPaged(
-            Authentication authentication,
-            @RequestParam(defaultValue = "0") int offset,   // 시작 인덱스[27]
-            @RequestParam(defaultValue = "20") int limit    // 최대 개수[27]
-    ) {
-        // 서비스의 페이징 메서드 호출
-        OffsetPageTotal<WritableReviewDto> page = reviewService.getWritableReviewsPaged(authentication, offset, limit); // 총합 포함
-        return ResponseEntity.ok(new WritableReviewsPageResponse(page.items(), page.total(), page.writtenTotal())); // 간단 DTO로 래핑
-    }
-
-    @GetMapping("/my/written")
-    public ResponseEntity<WrittenReviewsPageResponse> getMyWrittenReviewsPaged(
-            Authentication authentication,
-            @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(defaultValue = "20") int limit
-    ) {
-        OffsetPage<ReviewWithItemDto> page = reviewService.getWrittenReviewsPaged(authentication, offset, limit); // 서비스 호출
-        return ResponseEntity.ok(new WrittenReviewsPageResponse(page.items(), page.total())); // items/total 응답
-    }
 
     /**
      * 판매자가 자신이 판매한 아이템에 대한 리뷰 보기
@@ -121,6 +88,34 @@ public class ReviewController {
         // 서비스에 위임
         List<ReviewWithItemDto> reviews = reviewService.getReviewsByItemId(itemId);
         return ResponseEntity.ok(reviews);
+    }
+
+    // [1] 본인 작성 리뷰 목록 페이징 조회
+    /**
+     * 구매자 본인 작성 리뷰 페이징 조회
+     * /api/my-reviews/written?page=0&size=10
+     */
+    @GetMapping("/written")
+    public ResponseEntity<Page<ReviewWithItemDto>> getWrittenReviews(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ReviewWithItemDto> reviewDtos = reviewService.getReviewsByBuyerId(authentication, pageable);
+        return ResponseEntity.ok(reviewDtos);
+    }
+
+    // [2] 본인 작성 가능 리뷰 목록(배송완료+미작성) 페이징 조회
+    @GetMapping("/writable")
+    public ResponseEntity<Page<OrderItemDto>> getWritableReviews(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        Page<OrderItemDto> result = reviewService.getWritableReviews(authentication, pageable);
+        return ResponseEntity.ok(result);
     }
 
 }
