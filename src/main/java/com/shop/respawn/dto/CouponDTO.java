@@ -2,6 +2,7 @@ package com.shop.respawn.dto;
 
 import java.time.LocalDateTime;
 
+import com.shop.respawn.domain.Coupon;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -16,7 +17,7 @@ public class CouponDTO {
     private LocalDateTime expiresAt;
     private boolean used;
 
-    public static CouponDTO fromEntity(com.shop.respawn.domain.Coupon coupon) {
+    public static CouponDTO fromEntity(Coupon coupon) {
         return new CouponDTO(
                 coupon.getId(),
                 coupon.getCode(),

@@ -121,18 +121,9 @@ public class ReviewController {
     /**
      * 본인이 작성한 리뷰 개수 조회
      */
-    @GetMapping("/written/count")
-    public ResponseEntity<Long> getWrittenReviewCount(Authentication authentication) {
-        Long count = reviewService.countReviewsByBuyer(authentication);
-        return ResponseEntity.ok(count);
-    }
-
-    /**
-     * 본인이 작성 가능한 리뷰 개수 조회 (배송 완료 & 미작성)
-     */
-    @GetMapping("/writable/count")
-    public ResponseEntity<Long> getWritableReviewCount(Authentication authentication) {
-        Long count = reviewService.countWritableReviews(authentication);
+    @GetMapping("/count")
+    public ResponseEntity<CountReviewDto> getReviewCount(Authentication authentication) {
+        CountReviewDto count = reviewService.countReviews(authentication);
         return ResponseEntity.ok(count);
     }
 

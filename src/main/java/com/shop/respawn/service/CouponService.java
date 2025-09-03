@@ -108,6 +108,9 @@ public class CouponService {
             return CouponValidationResult.fail("상품 금액이 쿠폰 금액보다 커야 합니다."); // 금액 정책 [1]
         }
 
+        order.setOriginalAmount(order.getTotalAmount());
+        order.setTotalAmount(order.getTotalAmount() - coupon.getCouponAmount());
+
         // 5) 통과
         return CouponValidationResult.ok(); // 비즈니스 결과 반환 [9]
     }
