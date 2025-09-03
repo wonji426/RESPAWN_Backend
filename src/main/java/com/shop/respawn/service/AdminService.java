@@ -288,10 +288,9 @@ public class AdminService {
     }
 
     private String sortOrDefault(String sort) {
-        // 지원 정렬 필드 화이트리스트: username, name, id
         if (sort == null || sort.isBlank()) return "username";
         return switch (sort.toLowerCase()) {
-            case "username", "name", "id" -> sort;
+            case "username", "name", "id", "phonenumber", "email", "createdat", "grade", "company" -> sort;
             default -> "username";
         };
     }
