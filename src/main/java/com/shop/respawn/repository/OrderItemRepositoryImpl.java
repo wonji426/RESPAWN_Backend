@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+import static com.shop.respawn.domain.QDelivery.delivery;
 import static com.shop.respawn.domain.QOrderItem.orderItem;
 
 @Repository
@@ -48,5 +49,25 @@ public class OrderItemRepositoryImpl implements OrderItemRepositoryCustom {
         long total = totalCount != null ? totalCount : 0L;
 
         return new PageImpl<>(content, pageable, total);
+    }
+
+    @Override
+    public long countByBuyerIdAndDeliveryStatusAndIdNotIn(Long buyerId, DeliveryStatus status, List<Long> excludedOrderItemIds) {
+        if (excludedOrderItemIds == null || excludedOrderItemIds.isEmpty()) {
+            excludedOrderItemIds = List.of(-1L); // 빈 리스트 방지용 임시 값
+        }
+
+        Long count = queryFactory
+                .select(orderItem.count())
+                .from(orderItem)
+                .leftJoin(orderItem.delivery, delivery)
+                .where(
+                        orderItem.order.buyer.id.eq(buyerId),
+                        delivery.status.eq(status),
+                        orderItem.id.notIn(excludedOrderItemIds)
+                )
+                .fetchOne();
+
+        return count != null ? count : 0L;
     }
 }

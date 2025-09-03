@@ -270,4 +270,25 @@ public class ReviewService {
 
         return new PageImpl<>(writableDtos, pageable, deliveredOrderItems.getTotalElements());
     }
+
+    // 본인이 작성한 리뷰 개수 반환
+    public Long countReviewsByBuyer(Authentication authentication) {
+        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+        return (long) reviewRepository.findByBuyerId(String.valueOf(buyerId)).size();
+    }
+
+    // 본인이 작성 가능한 리뷰(배송 완료 & 미작성) 개수 반환
+    public Long countWritableReviews(Authentication authentication) {
+        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+        List<String> reviewedOrderItemIdsStr = reviewRepository.findByBuyerId(String.valueOf(buyerId)).stream()
+                .map(Review::getOrderItemId)
+                .toList();
+
+        List<Long> reviewedOrderItemIds = reviewedOrderItemIdsStr.isEmpty()
+                ? List.of(-1L)
+                : reviewedOrderItemIdsStr.stream().map(Long::valueOf).toList();
+
+        // 페이징 없이 전체 개수 조회 (OrderItemRepository 커스텀 메서드 필요)
+        return orderItemRepository.countByBuyerIdAndDeliveryStatusAndIdNotIn(buyerId, DeliveryStatus.DELIVERED, reviewedOrderItemIds);
+    }
 }
