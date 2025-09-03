@@ -271,15 +271,12 @@ public class ReviewService {
         return new PageImpl<>(writableDtos, pageable, deliveredOrderItems.getTotalElements());
     }
 
-    // 본인이 작성한 리뷰 개수 반환
-    public Long countReviewsByBuyer(Authentication authentication) {
+    public CountReviewDto countReviews(Authentication authentication) {
         Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
-        return (long) reviewRepository.findByBuyerId(String.valueOf(buyerId)).size();
-    }
+        // 본인이 작성한 리뷰 개수
+        long writtenCount = reviewRepository.findByBuyerId(String.valueOf(buyerId)).size();
 
-    // 본인이 작성 가능한 리뷰(배송 완료 & 미작성) 개수 반환
-    public Long countWritableReviews(Authentication authentication) {
-        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+        // 본인이 작성 가능한 리뷰(배송 완료 & 미작성) 개수 반환
         List<String> reviewedOrderItemIdsStr = reviewRepository.findByBuyerId(String.valueOf(buyerId)).stream()
                 .map(Review::getOrderItemId)
                 .toList();
@@ -289,6 +286,7 @@ public class ReviewService {
                 : reviewedOrderItemIdsStr.stream().map(Long::valueOf).toList();
 
         // 페이징 없이 전체 개수 조회 (OrderItemRepository 커스텀 메서드 필요)
-        return orderItemRepository.countByBuyerIdAndDeliveryStatusAndIdNotIn(buyerId, DeliveryStatus.DELIVERED, reviewedOrderItemIds);
+        long writableCount = orderItemRepository.countByBuyerIdAndDeliveryStatusAndIdNotIn(buyerId, DeliveryStatus.DELIVERED, reviewedOrderItemIds);
+        return CountReviewDto.of(writableCount, writtenCount);
     }
 }
