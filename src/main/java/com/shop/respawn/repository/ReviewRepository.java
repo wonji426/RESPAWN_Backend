@@ -1,9 +1,7 @@
 package com.shop.respawn.repository;
 
 import com.shop.respawn.domain.Review;
-import com.shop.respawn.dto.ReviewLite;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 

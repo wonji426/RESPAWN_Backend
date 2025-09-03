@@ -1,10 +1,8 @@
 package com.shop.respawn.controller;
 
-import com.shop.respawn.domain.Coupon;
 import com.shop.respawn.dto.CouponDTO;
 import com.shop.respawn.dto.coupon.CouponValidationResult;
 import com.shop.respawn.dto.coupon.OrderCouponCheckResponse;
-import com.shop.respawn.exception.ApiMessage;
 import com.shop.respawn.service.CouponService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
