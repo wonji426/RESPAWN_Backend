@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.shop.respawn.util.MaskingUtil.maskMiddleFourChars;
@@ -240,14 +241,28 @@ public class ReviewService {
                 .toList();
 
         List<Long> reviewedOrderItemIds = reviewedOrderItemIdsStr.isEmpty()
-                ? List.of(-1L) // 빈 리스트 회피용 미존재 값
-                : reviewedOrderItemIdsStr.stream().map(Long::valueOf).toList();
+                ? List.of()
+                : reviewedOrderItemIdsStr.stream()
+                .map(Long::valueOf)
+                .toList();
 
-        Page<OrderItem> deliveredOrderItems = orderItemRepository
-                .findAllByOrder_Buyer_IdAndDelivery_StatusAndIdNotIn(buyerId, DeliveryStatus.DELIVERED, reviewedOrderItemIds, pageable);
+        // QueryDSL 커스텀 메서드 호출 (OrderItemRepositoryCustom)
+        Page<OrderItem> deliveredOrderItems = orderItemRepository.findDeliveredUnreviewedOrderItems(buyerId, reviewedOrderItemIds, pageable);
 
+        // 관련된 아이템 리스트를 한꺼번에 조회
+        List<String> itemIds = deliveredOrderItems.stream()
+                .map(OrderItem::getItemId)
+                .distinct()
+                .toList();
+        List<Item> items = itemService.getItemsByIds(itemIds);
+
+        // 아이템 아이디 -> 아이템 매핑
+        Map<String, Item> itemMap = items.stream()
+                .collect(Collectors.toMap(Item::getId, item -> item));
+
+        // DTO 변환 시 아이템 매핑과 함께 전달
         List<OrderItemDto> writableDtos = deliveredOrderItems.stream()
-                .map(OrderItemDto::new)
+                .map(orderItem -> new OrderItemDto(orderItem, itemMap.get(orderItem.getItemId())))
                 .toList();
 
         return new PageImpl<>(writableDtos, pageable, deliveredOrderItems.getTotalElements());
