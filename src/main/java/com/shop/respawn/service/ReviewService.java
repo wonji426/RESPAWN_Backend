@@ -262,7 +262,10 @@ public class ReviewService {
 
         // DTO 변환 시 아이템 매핑과 함께 전달
         List<OrderItemDto> writableDtos = deliveredOrderItems.stream()
-                .map(orderItem -> new OrderItemDto(orderItem, itemMap.get(orderItem.getItemId())))
+                .map(orderItem -> {
+                    Item item = itemMap.get(orderItem.getItemId());
+                    return new OrderItemDto(orderItem, item, item != null ? item.getImageUrl() : null);
+                })
                 .toList();
 
         return new PageImpl<>(writableDtos, pageable, deliveredOrderItems.getTotalElements());
