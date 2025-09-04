@@ -23,6 +23,7 @@ public class MyService {
     private final OrderItemRepository orderItemRepository;
     private final CouponRepository couponRepository;
     private final BCryptPasswordEncoder encoder;
+    private final LedgerPointService ledgerPointService;
 
     private final EntityManager em;
 
@@ -72,6 +73,13 @@ public class MyService {
         couponRepository.save(coupon2);
         em.persist(coupon1);
         em.persist(coupon2);
+
+        ledgerPointService.savePoints(buyer.getId(),
+                20000L,
+                LocalDateTime.now().plusYears(1),
+                1L,
+                "결제 포인트 적립",
+                "system");
 
         // 주문 데이터 생성 예시
         Item item1 = new Item();

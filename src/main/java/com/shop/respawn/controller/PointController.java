@@ -8,6 +8,7 @@ import com.shop.respawn.dto.point.PointLedgerDto;
 import com.shop.respawn.repository.OrderRepository;
 import com.shop.respawn.service.LedgerPointService;
 import com.shop.respawn.service.PointQueryService;
+import com.shop.respawn.util.RedisUtil;
 import com.shop.respawn.util.SessionUtil;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class PointController {
     private final LedgerPointService ledgerPointService;
     private final PointQueryService pointQueryService;
     private final OrderRepository orderRepository;
+    private final RedisUtil redisUtil;
 
     @GetMapping("/total")
     public long getMyTotalPointsV2(HttpSession session) {
@@ -68,15 +70,15 @@ public class PointController {
         }
 
         // 포인트 적용을 N번 누를 시
+        String redisKey = "order:" + orderId + ":pointAmount";
         if(order.getUsedPointAmount() != 0L){
-            Long originalAmount = order.getOriginalAmount();
-            order.setTotalAmount(originalAmount);
-            order.setUsedPointAmount(0L);
+            String data = redisUtil.getData(redisKey);
+            order.setTotalAmount(order.getTotalAmount() + Long.parseLong(data));
         }
 
-        // 주문 엔티티에 포인트 사용만 저장
-        Long originalAmount = order.getTotalAmount();
-        order.setPointUsage(originalAmount, usePointAmount);
+        order.setTotalAmount(order.getTotalAmount() - usePointAmount);
+        redisUtil.setData(redisKey, String.valueOf(usePointAmount));
+        order.setUsedPointAmount(usePointAmount);
 
         orderRepository.save(order);
 

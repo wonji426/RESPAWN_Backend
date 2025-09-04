@@ -72,10 +72,9 @@ public class OrderController {
     public ResponseEntity<Map<String, Object>> completeSelectedOrder(
             @PathVariable Long orderId,
             @RequestBody @Valid OrderRequestDto orderRequest,
-            HttpSession session) {
+            Authentication authentication) {
         try {
-            getBuyerIdFromSession(session);
-            orderService.completeSelectedOrder(orderId, orderRequest);
+            orderService.completeSelectedOrder(authentication, orderId, orderRequest);
 
             return ResponseEntity.ok(Map.of(
                     "message", "선택된 상품의 주문이 성공적으로 완료되었습니다."

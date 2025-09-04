@@ -35,9 +35,9 @@ public class CouponController {
         CouponValidationResult result = couponService.checkApplicableForOrder(authentication, orderId, couponCode); // 서비스 위임 [9]
 
         if (!result.isOk()) {
-            return ResponseEntity.ok(OrderCouponCheckResponse.fail(result.getMessage())); // HTTP 어댑팅 [9]
+            return ResponseEntity.ok(OrderCouponCheckResponse.fail(result.getMessage())); // HTTP 어댑팅
         }
-        return ResponseEntity.ok(OrderCouponCheckResponse.ok()); // 성공 응답 [6][9]
+        return ResponseEntity.ok(OrderCouponCheckResponse.ok()); // 성공 응답
     }
 
     @PostMapping("/cancel")

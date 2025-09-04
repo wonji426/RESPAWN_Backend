@@ -10,6 +10,7 @@ import com.shop.respawn.domain.Buyer;
 import com.shop.respawn.domain.Coupon;
 import com.shop.respawn.repository.CouponRepository;
 import com.shop.respawn.repository.BuyerRepository;
+import com.shop.respawn.util.RedisUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class CouponService {
     private final CouponRepository couponRepository;
     private final BuyerRepository buyerRepository;
     private final OrderRepository orderRepository;
+    private final RedisUtil redisUtil;
 
     // 등급 변경 시 쿠폰 발급
     public void issueGradeCoupon(Long buyerId, Grade tier) {
@@ -51,7 +53,7 @@ public class CouponService {
         couponRepository.save(coupon);
     }
 
-    public long applyCouponIfValid(String code, long orderItemsAmount) {
+    public void applyCouponIfValid(String code, long orderItemsAmount) {
         Coupon coupon = couponRepository.findByCode(code)
                 .orElseThrow(() -> new RuntimeException("쿠폰을 찾을 수 없습니다."));
 
@@ -67,8 +69,6 @@ public class CouponService {
 
         coupon.markUsed();
         couponRepository.save(coupon); // 변경감지로도 가능하나 명시 저장
-
-        return coupon.getCouponAmount();
     }
 
     @Transactional(readOnly = true)
@@ -108,8 +108,11 @@ public class CouponService {
             return CouponValidationResult.fail("상품 금액이 쿠폰 금액보다 커야 합니다."); // 금액 정책 [1]
         }
 
-        order.setOriginalAmount(order.getTotalAmount());
         order.setTotalAmount(order.getTotalAmount() - coupon.getCouponAmount());
+        order.setUsedCouponAmount(coupon.getCouponAmount());
+
+        String redisKey = "order:" + orderId + ":couponAmount";
+        redisUtil.setData(redisKey, String.valueOf(coupon.getCouponAmount()));
 
         // 5) 통과
         return CouponValidationResult.ok(); // 비즈니스 결과 반환 [9]
@@ -122,8 +125,12 @@ public class CouponService {
                 .orElseThrow(() -> new RuntimeException("주문을 찾을 수 없습니다: " + orderId)); // 도메인 조회 [9]
         order.validateOwner(buyerId); // 비즈니스 규칙: 소유자 검증 [1]
 
-        order.setTotalAmount(order.getOriginalAmount());
-        order.setOriginalAmount(0L);
+        String redisKey = "order:" + orderId + ":couponAmount";
+        String data = redisUtil.getData(redisKey);
+        order.setTotalAmount(order.getTotalAmount() + Long.parseLong(data));
+        redisUtil.deleteData(redisKey);
+
+        order.setUsedCouponAmount(0L);
 
         // 5) 통과
         return CouponValidationResult.ok(); // 비즈니스 결과 반환 [9]
