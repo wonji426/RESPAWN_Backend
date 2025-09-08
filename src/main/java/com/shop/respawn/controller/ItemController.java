@@ -7,9 +7,11 @@ import com.shop.respawn.dto.ItemDto;
 import com.shop.respawn.dto.OffsetResponse;
 import com.shop.respawn.service.ImageService;
 import com.shop.respawn.service.ItemService;
+import com.shop.respawn.util.SessionUtil;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.shop.respawn.domain.ItemStatus.*;
+import static com.shop.respawn.util.SessionUtil.*;
 import static com.shop.respawn.util.SessionUtil.getSellerIdFromSession;
 
 @RestController
@@ -32,12 +35,12 @@ public class ItemController {
      */
     @PostMapping("/register")
     public ResponseEntity<?> registerItem(
+            Authentication authentication,
             @RequestPart("itemDto") ItemDto itemDto,
-            @RequestPart("image") MultipartFile imageFile,
-            HttpSession session
+            @RequestPart("image") MultipartFile imageFile
     ) {
         try {
-            Long sellerId = getSellerIdFromSession(session);
+            Long sellerId = getUserIdFromAuthentication(authentication);
             String imageUrl = imageService.saveImage(imageFile);
             itemDto.setImageUrl(imageUrl);
             Item created = itemService.registerItem(itemDto, sellerId);
@@ -76,8 +79,8 @@ public class ItemController {
      * 자신이 등록한 아이템 조회
      */
     @GetMapping("/my-items")
-    public ResponseEntity<List<ItemDto>> getItemsOfLoggedInSeller(HttpSession session) {
-        Long sellerId = getSellerIdFromSession(session);  // 세션에서 로그인된 판매자 ID 조회
+    public ResponseEntity<List<ItemDto>> getItemsOfLoggedInSeller(Authentication authentication) {
+        Long sellerId = getUserIdFromAuthentication(authentication);
 
         List<Item> items = itemService.getItemsBySellerId(String.valueOf(sellerId));
 
@@ -104,19 +107,20 @@ public class ItemController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<?> updateItem(
+            Authentication authentication,
             @PathVariable String id,
             @RequestPart("itemDto") ItemDto itemDto,
-            @RequestPart(value = "image", required = false) MultipartFile imageFile,
-            HttpSession session) {
+            @RequestPart(value = "image", required = false) MultipartFile imageFile
+    ) {
         try {
-            Long sellerId = getSellerIdFromSession(session);
+            Long sellerId = getUserIdFromAuthentication(authentication);
 
             if (imageFile != null && !imageFile.isEmpty()) {
                 String imageUrl = imageService.saveImage(imageFile);
                 itemDto.setImageUrl(imageUrl);
             }
 
-            Item updatedItem = itemService.updateItem(id, itemDto, sellerId);
+            Item updatedItem = itemService.updateItem(id, itemDto, String.valueOf(sellerId));
             return ResponseEntity.ok(updatedItem);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("상품 수정 에러: " + e.getMessage());
@@ -127,9 +131,12 @@ public class ItemController {
      * 상품 판매 일시중지
      */
     @PostMapping("/{id}/pause")
-    public ResponseEntity<?> pauseItem(@PathVariable String id, HttpSession session) {
-        Long sellerId = getSellerIdFromSession(session);
-        itemService.changeItemStatus(id, sellerId, PAUSED);
+    public ResponseEntity<?> pauseItem(
+            Authentication authentication,
+            @PathVariable String id
+    ) {
+        Long sellerId = getUserIdFromAuthentication(authentication);
+        itemService.changeItemStatus(id, String.valueOf(sellerId), PAUSED);
         return ResponseEntity.ok().body("상품이 일시중지되었습니다.");
     }
 
@@ -137,9 +144,12 @@ public class ItemController {
      * 상품 판매 중지
      */
     @PostMapping("/{id}/stop")
-    public ResponseEntity<?> stopItem(@PathVariable String id, HttpSession session) {
-        Long sellerId = getSellerIdFromSession(session);
-        itemService.changeItemStatus(id, sellerId, STOPPED);
+    public ResponseEntity<?> stopItem(
+            Authentication authentication,
+            @PathVariable String id
+    ) {
+        Long sellerId = getUserIdFromAuthentication(authentication);
+        itemService.changeItemStatus(id, String.valueOf(sellerId), STOPPED);
         return ResponseEntity.ok().body("상품 판매가 중지되었습니다.");
     }
 
@@ -147,9 +157,12 @@ public class ItemController {
      * 상품 판매 재개
      */
     @PostMapping("/{id}/resume")
-    public ResponseEntity<?> resumeItem(@PathVariable String id, HttpSession session) {
-        Long sellerId = getSellerIdFromSession(session);
-        itemService.changeItemStatus(id, sellerId, SALE);
+    public ResponseEntity<?> resumeItem(
+            Authentication authentication,
+            @PathVariable String id
+    ) {
+        Long sellerId = getUserIdFromAuthentication(authentication);
+        itemService.changeItemStatus(id, String.valueOf(sellerId), SALE);
         return ResponseEntity.ok().body("상품 판매가 재개되었습니다.");
     }
 
@@ -157,10 +170,13 @@ public class ItemController {
      * 상품 삭제
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteItem(@PathVariable String id, HttpSession session) {
+    public ResponseEntity<?> deleteItem(
+            Authentication authentication,
+            @PathVariable String id
+    ) {
         try {
-            Long sellerId = getSellerIdFromSession(session);
-            itemService.deleteItemIfNoPendingDelivery(id, sellerId);
+            Long sellerId = getUserIdFromAuthentication(authentication);
+            itemService.deleteItemIfNoPendingDelivery(id, String.valueOf(sellerId));
             return ResponseEntity.ok(Map.of("message", "상품이 성공적으로 삭제되었습니다."));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

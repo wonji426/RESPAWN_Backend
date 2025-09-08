@@ -56,12 +56,12 @@ public class ItemService {
         }
     }
 
-    public Item updateItem(String itemId, ItemDto itemDto, Long sellerId) {
+    public Item updateItem(String itemId, ItemDto itemDto, String sellerId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + itemId));
 
         // 본인 상품인지 확인
-        if (!item.getSellerId().equals(String.valueOf(sellerId))) {
+        if (!item.getSellerId().equals(sellerId)) {
             throw new RuntimeException("본인이 등록한 상품만 수정할 수 있습니다.");
         }
 
@@ -121,22 +121,22 @@ public class ItemService {
     /**
      * 상품의 판매상태 조작 메서드
      */
-    public void changeItemStatus(String itemId, Long sellerId, ItemStatus status) {
+    public void changeItemStatus(String itemId, String sellerId, ItemStatus status) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다."));
-        if (!item.getSellerId().equals(String.valueOf(sellerId))) {
+        if (!item.getSellerId().equals(sellerId)) {
             throw new RuntimeException("본인이 등록한 상품만 상태를 변경할 수 있습니다.");
         }
         item.setStatus(status);
         itemRepository.save(item);
     }
 
-    public void deleteItemIfNoPendingDelivery(String itemId, Long sellerId) {
+    public void deleteItemIfNoPendingDelivery(String itemId, String sellerId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + itemId));
 
         // 판매자 본인 상품인지 확인
-        if (!item.getSellerId().equals(String.valueOf(sellerId))) {
+        if (!item.getSellerId().equals(sellerId)) {
             throw new RuntimeException("본인이 등록한 상품만 삭제할 수 있습니다.");
         }
 
