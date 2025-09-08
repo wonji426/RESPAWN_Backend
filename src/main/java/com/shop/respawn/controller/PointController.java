@@ -7,7 +7,6 @@ import com.shop.respawn.dto.point.PointLedgerDto;
 import com.shop.respawn.service.LedgerPointService;
 import com.shop.respawn.service.OrderService;
 import com.shop.respawn.service.PointQueryService;
-import com.shop.respawn.util.SessionUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;

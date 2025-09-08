@@ -246,11 +246,10 @@ public class OrderService {
     /**
      * 선택된 상품 주문 완료 처리
      */
-    public void completeSelectedOrder(Authentication authentication, Long orderId, OrderRequestDto orderRequest) {
+
+    public void completeSelectedOrder(Long buyerId, Long orderId, OrderRequestDto orderRequest) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("주문을 찾을 수 없습니다"));
-
-        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
 
         // 1. 재고 확인
         validateStockFromOrderItems(order.getOrderItems());
@@ -470,8 +469,7 @@ public class OrderService {
     /**
      * 주문 내역 조회 메서드
      */
-    public OrderHistoryDto getLatestOrderByBuyerId(Authentication authentication) {
-        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+    public OrderHistoryDto getLatestOrderByBuyerId(Long buyerId) {
 
         Order order = orderRepository.findTop1ByBuyer_IdAndStatusOrderByOrderDateDesc(buyerId, OrderStatus.PAID);
 
@@ -490,8 +488,7 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderHistoryDto> getRecentMonthOrders(Authentication authentication) {
-        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+    public List<OrderHistoryDto> getRecentMonthOrders(Long bookingId) {
 
         LocalDateTime to = LocalDateTime.now();
         LocalDateTime from = to.minusMonths(1);
