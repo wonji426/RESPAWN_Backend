@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static com.shop.respawn.util.SessionUtil.getUserIdFromAuthentication;
+import static com.shop.respawn.util.AuthenticationUtil.getUserIdFromAuthentication;
 
 @RestController
 @RequestMapping("/api/addresses")

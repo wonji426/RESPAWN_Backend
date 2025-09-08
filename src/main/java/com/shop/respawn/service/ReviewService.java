@@ -162,7 +162,7 @@ public class ReviewService {
                     String maskedUsername;
 
                     try {
-                        String buyerUsername = buyerRepository.findById(Long.valueOf(buyerId))
+                        String buyerUsername = buyerRepository.findById(Long.parseLong(buyerId))
                                 .map(Buyer::getUsername)
                                 .orElse("알 수 없는 사용자");
                         maskedUsername = maskMiddleFourChars(buyerUsername);

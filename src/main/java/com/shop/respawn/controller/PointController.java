@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static com.shop.respawn.util.SessionUtil.*;
+import static com.shop.respawn.util.AuthenticationUtil.*;
 
 @RestController
 @RequiredArgsConstructor

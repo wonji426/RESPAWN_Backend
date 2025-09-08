@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.shop.respawn.domain.ItemStatus.*;
-import static com.shop.respawn.util.SessionUtil.*;
+import static com.shop.respawn.util.AuthenticationUtil.*;
 
 @RestController
 @RequiredArgsConstructor

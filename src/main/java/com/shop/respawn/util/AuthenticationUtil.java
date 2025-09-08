@@ -3,7 +3,7 @@ package com.shop.respawn.util;
 import com.shop.respawn.security.auth.PrincipalDetails;
 import org.springframework.security.core.Authentication;
 
-public class SessionUtil {
+public class AuthenticationUtil {
 
     /**
      * Authentication에서 userId를 가져오는 헬퍼 메서드

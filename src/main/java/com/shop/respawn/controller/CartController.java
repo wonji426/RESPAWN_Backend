@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.shop.respawn.util.SessionUtil.getUserIdFromAuthentication;
+import static com.shop.respawn.util.AuthenticationUtil.getUserIdFromAuthentication;
 
 @RestController
 @RequiredArgsConstructor

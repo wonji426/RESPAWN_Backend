@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-import static com.shop.respawn.util.SessionUtil.*;
+import static com.shop.respawn.util.AuthenticationUtil.*;
 
 @RestController
 @RequestMapping("/api/inquiries")
