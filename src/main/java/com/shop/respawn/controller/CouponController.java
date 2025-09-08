@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static com.shop.respawn.util.SessionUtil.*;
+
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/coupons")
@@ -27,12 +29,14 @@ public class CouponController {
      */
     @GetMapping("/check")
     public ResponseEntity<OrderCouponCheckResponse> checkOnOrder(
+            Authentication authentication,
             @RequestParam("orderId") Long orderId,
-            @RequestParam("code") String couponCode,
-            Authentication authentication
+            @RequestParam("code") String couponCode
     ) {
 
-        CouponValidationResult result = couponService.checkApplicableForOrder(authentication, orderId, couponCode); // 서비스 위임 [9]
+        Long buyerId = getUserIdFromAuthentication(authentication);
+
+        CouponValidationResult result = couponService.checkApplicableForOrder(buyerId, orderId, couponCode); // 서비스 위임 [9]
 
         if (!result.isOk()) {
             return ResponseEntity.ok(OrderCouponCheckResponse.fail(result.getMessage())); // HTTP 어댑팅
@@ -42,11 +46,13 @@ public class CouponController {
 
     @PostMapping("/cancel")
     public ResponseEntity<?> cancelOnOrder(
-            @RequestParam("orderId") Long orderId,
-            Authentication authentication
+            Authentication authentication,
+            @RequestParam("orderId") Long orderId
     ) {
 
-        CouponValidationResult result = couponService.cancelApplicableForOrder(authentication, orderId);
+        Long buyerId = getUserIdFromAuthentication(authentication);
+
+        CouponValidationResult result = couponService.cancelApplicableForOrder(buyerId, orderId);
 
         if (!result.isOk()) {
             return ResponseEntity.badRequest().build();
@@ -60,7 +66,8 @@ public class CouponController {
      */
     @GetMapping("/view")
     public ResponseEntity<List<CouponDTO>> getCouponsByBuyerId(Authentication authentication) {
-        List<CouponDTO> couponDTOs = couponService.getCouponDTOsByBuyerId(authentication);
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        List<CouponDTO> couponDTOs = couponService.getCouponDTOsByBuyerId(buyerId);
         return ResponseEntity.ok(couponDTOs);
     }
 }

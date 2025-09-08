@@ -6,8 +6,6 @@ import com.shop.respawn.dto.productInquiry.ProductInquiryResponseTitlesDto;
 import com.shop.respawn.service.ItemService;
 import com.shop.respawn.service.ProductInquiryService;
 
-import com.shop.respawn.util.SessionUtil;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
 import lombok.RequiredArgsConstructor;

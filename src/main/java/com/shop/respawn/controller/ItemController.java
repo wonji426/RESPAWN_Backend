@@ -1,14 +1,11 @@
 package com.shop.respawn.controller;
 
-
 import com.shop.respawn.domain.Item;
 import com.shop.respawn.dto.ItemCategoryDto;
 import com.shop.respawn.dto.ItemDto;
 import com.shop.respawn.dto.OffsetResponse;
 import com.shop.respawn.service.ImageService;
 import com.shop.respawn.service.ItemService;
-import com.shop.respawn.util.SessionUtil;
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,7 +17,6 @@ import java.util.Map;
 
 import static com.shop.respawn.domain.ItemStatus.*;
 import static com.shop.respawn.util.SessionUtil.*;
-import static com.shop.respawn.util.SessionUtil.getSellerIdFromSession;
 
 @RestController
 @RequiredArgsConstructor
