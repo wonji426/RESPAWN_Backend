@@ -6,12 +6,14 @@ import com.shop.respawn.dto.productInquiry.ProductInquiryResponseTitlesDto;
 import com.shop.respawn.service.ItemService;
 import com.shop.respawn.service.ProductInquiryService;
 
+import com.shop.respawn.util.SessionUtil;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,10 +33,13 @@ public class InquiryController {
      * 구매자 상품 문의 등록
      */
     @PostMapping
-    public ResponseEntity<?> createInquiry(@RequestBody @Valid ProductInquiryRequestDto dto, HttpSession session) {
+    public ResponseEntity<?> createInquiry(
+            Authentication authentication,
+            @RequestBody @Valid ProductInquiryRequestDto dto
+    ) {
         try {
-            Long buyerId = getBuyerIdFromSession(session);
-            ProductInquiryResponseDto created = productInquiryService.createInquiry(buyerId, dto);
+            Long buyerId = getUserIdFromAuthentication(authentication);
+            ProductInquiryResponseDto created = productInquiryService.createInquiry(String.valueOf(buyerId), dto);
             return ResponseEntity.ok(Map.of("message", "상품 문의가 등록되었습니다.", "inquiry", created));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -45,9 +50,9 @@ public class InquiryController {
      * 자신이 작성한 문의 조회
      */
     @GetMapping("/my")
-    public ResponseEntity<?> getMyInquiries(HttpSession session) {
+    public ResponseEntity<?> getMyInquiries(Authentication authentication) {
         try {
-            Long buyerId = getBuyerIdFromSession(session);
+            Long buyerId = getUserIdFromAuthentication(authentication);
             List<ProductInquiryResponseDto> inquiries = productInquiryService.getInquiriesByBuyer(String.valueOf(buyerId));
             return ResponseEntity.ok(inquiries);
         } catch (RuntimeException e) {
@@ -78,7 +83,10 @@ public class InquiryController {
 
     // 2) 문의 상세 조회: 구매자 본인 혹은 해당 상품 판매자만 접근 가능
     @GetMapping("/{inquiryId}/detail")
-    public ResponseEntity<?> getInquiryDetail(@PathVariable String inquiryId, HttpSession session) {
+    public ResponseEntity<?> getInquiryDetail(
+            Authentication authentication,
+            @PathVariable String inquiryId
+    ) {
         try {
 
             ProductInquiryResponseDto inquiryDto = productInquiryService.getInquiryById(inquiryId);
@@ -93,7 +101,7 @@ public class InquiryController {
             if(inquiryDto.isOpenToPublic()) {
                 return ResponseEntity.ok(inquiryDto);
             } else {
-                String userId = String.valueOf(getUserIdFromSession(session));
+                String userId = String.valueOf(getUserIdFromAuthentication(authentication));
                 // 권한 체크: 로그인한 유저가 구매자 본인 OR 판매자면 허용
                 if (userId.equals(inquiryDto.getBuyerId()) || userId.equals(sellerId)) {
                     return ResponseEntity.ok(inquiryDto);
@@ -122,9 +130,9 @@ public class InquiryController {
 
     // 1) 판매자가 본인 상품에 대한 문의 목록 조회
     @GetMapping("/seller")
-    public ResponseEntity<?> getInquiriesForSeller(HttpSession session) {
+    public ResponseEntity<?> getInquiriesForSeller(Authentication authentication) {
         try {
-            String sellerId = String.valueOf(getSellerIdFromSession(session));
+            String sellerId = String.valueOf(getUserIdFromAuthentication(authentication));
             List<ProductInquiryResponseDto> inquiries = productInquiryService.getInquiriesBySellerId(sellerId);
             return ResponseEntity.ok(inquiries);
         } catch (RuntimeException e) {
@@ -135,11 +143,12 @@ public class InquiryController {
     // 2) 판매자가 문의에 답변 등록/수정
     @PostMapping("/{inquiryId}/answer")
     public ResponseEntity<?> answerInquiry(
+            Authentication authentication,
             @PathVariable String inquiryId,
-            @RequestBody Map<String, String> requestBody,
-            HttpSession session) {
+            @RequestBody Map<String, String> requestBody
+    ) {
         try {
-            String sellerId = String.valueOf(getSellerIdFromSession(session));
+            String sellerId = String.valueOf(getUserIdFromAuthentication(authentication));
 
             String answer = requestBody.get("answer");
             if (answer == null || answer.isBlank()) {

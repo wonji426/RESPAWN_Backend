@@ -99,10 +99,10 @@ public class ProductInquiryService {
     }
 
     // 상품 문의 등록
-    public ProductInquiryResponseDto createInquiry(Long buyerId, ProductInquiryRequestDto dto) {
+    public ProductInquiryResponseDto createInquiry(String buyerId, ProductInquiryRequestDto dto) {
 
         ProductInquiry inquiry = new ProductInquiry();
-        inquiry.setBuyerId(String.valueOf(buyerId));
+        inquiry.setBuyerId(buyerId);
         inquiry.setItemId(dto.getItemId());
         inquiry.setInquiryType(dto.getInquiryType());
         inquiry.setQuestion(dto.getQuestion());
