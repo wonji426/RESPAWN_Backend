@@ -11,7 +11,6 @@ import com.shop.respawn.repository.PaymentRepository;
 import com.shop.respawn.util.MonthlyPeriodUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;

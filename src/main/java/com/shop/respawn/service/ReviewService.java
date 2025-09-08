@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -244,7 +243,7 @@ public class ReviewService {
                 .toList();
 
         // QueryDSL 커스텀 메서드 호출 (OrderItemRepositoryCustom)
-        Page<OrderItem> deliveredOrderItems = orderItemRepository.findDeliveredUnreviewedOrderItems(buyerId, reviewedOrderItemIds, pageable);
+        Page<OrderItem> deliveredOrderItems = orderItemRepository.findDeliveredUnreviewedOrderItems(Long.parseLong(buyerId), reviewedOrderItemIds, pageable);
 
         // 관련된 아이템 리스트를 한꺼번에 조회
         List<String> itemIds = deliveredOrderItems.stream()
@@ -273,7 +272,7 @@ public class ReviewService {
         long writtenCount = reviewRepository.findByBuyerId(buyerId).size();
 
         // 본인이 작성 가능한 리뷰(배송 완료 & 미작성) 개수 반환
-        List<String> reviewedOrderItemIdsStr = reviewRepository.findByBuyerId(String.valueOf(buyerId)).stream()
+        List<String> reviewedOrderItemIdsStr = reviewRepository.findByBuyerId(buyerId).stream()
                 .map(Review::getOrderItemId)
                 .toList();
 
@@ -282,7 +281,7 @@ public class ReviewService {
                 : reviewedOrderItemIdsStr.stream().map(Long::valueOf).toList();
 
         // 페이징 없이 전체 개수 조회 (OrderItemRepository 커스텀 메서드 필요)
-        long writableCount = orderItemRepository.countByBuyerIdAndDeliveryStatusAndIdNotIn(buyerId, DeliveryStatus.DELIVERED, reviewedOrderItemIds);
+        long writableCount = orderItemRepository.countByBuyerIdAndDeliveryStatusAndIdNotIn(Long.parseLong(buyerId), DeliveryStatus.DELIVERED, reviewedOrderItemIds);
         return CountReviewDto.of(writableCount, writtenCount);
     }
 }

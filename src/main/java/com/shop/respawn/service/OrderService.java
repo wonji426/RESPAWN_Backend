@@ -7,11 +7,9 @@ import com.shop.respawn.dto.user.SellerOrderDetailDto;
 import com.shop.respawn.dto.user.SellerOrderDto;
 import com.shop.respawn.repository.*;
 import com.shop.respawn.util.RedisUtil;
-import com.shop.respawn.util.SessionUtil;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -488,7 +486,7 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderHistoryDto> getRecentMonthOrders(Long bookingId) {
+    public List<OrderHistoryDto> getRecentMonthOrders(Long buyerId) {
 
         LocalDateTime to = LocalDateTime.now();
         LocalDateTime from = to.minusMonths(1);

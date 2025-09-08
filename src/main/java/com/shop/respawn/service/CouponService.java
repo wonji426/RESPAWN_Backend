@@ -12,7 +12,6 @@ import com.shop.respawn.repository.CouponRepository;
 import com.shop.respawn.repository.BuyerRepository;
 import com.shop.respawn.util.RedisUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

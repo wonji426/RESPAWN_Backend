@@ -1,7 +1,6 @@
 package com.shop.respawn.repository;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import com.shop.respawn.domain.QPayment;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 

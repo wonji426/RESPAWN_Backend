@@ -9,7 +9,6 @@ import com.shop.respawn.repository.OrderItemRepository;
 import com.shop.respawn.repository.SellerRepository;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +22,6 @@ import static com.shop.respawn.domain.OrderStatus.*;
 @Transactional
 public class ItemService {
 
-    private final MongoTemplate mongoTemplate;
     private final ItemRepository itemRepository;
     private final SellerRepository sellerRepository;
     private final OrderItemRepository orderItemRepository; // 주문 아이템 조회용

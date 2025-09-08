@@ -5,13 +5,11 @@ import com.shop.respawn.dto.point.ExpiringPointItemDto;
 import com.shop.respawn.dto.point.PointHistoryDto;
 import com.shop.respawn.dto.point.PointLedgerDto;
 import com.shop.respawn.repository.*;
-import com.shop.respawn.util.SessionUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
