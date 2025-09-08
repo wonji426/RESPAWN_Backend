@@ -202,12 +202,10 @@ public class ReviewService {
     /**
      * 구매자가 작성한 리뷰 목록 페이징 조회 (상품 정보 포함)
      */
-    public Page<ReviewWithItemDto> getReviewsByBuyerId(Authentication authentication, Pageable pageable) {
-
-        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+    public Page<ReviewWithItemDto> getReviewsByBuyerId(String buyerId, Pageable pageable) {
 
         // 1. 리뷰 페이징 조회
-        Page<Review> reviewPage = reviewRepository.findByBuyerIdOrderByCreatedDateDesc(String.valueOf(buyerId), pageable);
+        Page<Review> reviewPage = reviewRepository.findByBuyerIdOrderByCreatedDateDesc(buyerId, pageable);
 
         if (reviewPage.isEmpty()) {
             return Page.empty();
@@ -232,11 +230,10 @@ public class ReviewService {
     /**
      * 작성 가능한 리뷰 목록 (배송 완료 & 미작성) 페이징 조회
      */
-    public Page<OrderItemDto> getWritableReviews(Authentication authentication, Pageable pageable) {
-        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+    public Page<OrderItemDto> getWritableReviews(String buyerId, Pageable pageable) {
 
         // 이미 리뷰 작성된 주문아이템 ID 리스트 조회
-        List<String> reviewedOrderItemIdsStr = reviewRepository.findByBuyerId(String.valueOf(buyerId)).stream()
+        List<String> reviewedOrderItemIdsStr = reviewRepository.findByBuyerId(buyerId).stream()
                 .map(Review::getOrderItemId)
                 .toList();
 
@@ -271,10 +268,9 @@ public class ReviewService {
         return new PageImpl<>(writableDtos, pageable, deliveredOrderItems.getTotalElements());
     }
 
-    public CountReviewDto countReviews(Authentication authentication) {
-        Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName());
+    public CountReviewDto countReviews(String buyerId) {
         // 본인이 작성한 리뷰 개수
-        long writtenCount = reviewRepository.findByBuyerId(String.valueOf(buyerId)).size();
+        long writtenCount = reviewRepository.findByBuyerId(buyerId).size();
 
         // 본인이 작성 가능한 리뷰(배송 완료 & 미작성) 개수 반환
         List<String> reviewedOrderItemIdsStr = reviewRepository.findByBuyerId(String.valueOf(buyerId)).stream()

@@ -4,7 +4,6 @@ import com.shop.respawn.dto.gradeRecalc.UserGradeResponse;
 import com.shop.respawn.dto.gradeRecalc.GradeRecalcRequest;
 import com.shop.respawn.dto.gradeRecalc.GradeRecalcResponse;
 import com.shop.respawn.service.UserGradeService;
-import com.shop.respawn.util.SessionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
