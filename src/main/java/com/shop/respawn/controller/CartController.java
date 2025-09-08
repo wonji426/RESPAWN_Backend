@@ -13,13 +13,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.shop.respawn.util.SessionUtil.getBuyerIdFromSession;
 import static com.shop.respawn.util.SessionUtil.getUserIdFromAuthentication;
 
 @RestController
