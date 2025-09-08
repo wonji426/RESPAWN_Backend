@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 
 @Component
@@ -17,12 +18,12 @@ public class GradeScheduler {
     private final UserGradeService userGradeService;
 
     // 매일 새벽 00시 00분
-//    @Scheduled(cron = "0 0 0 1 * *")
-//    public void recalcAllBuyerTiers() {
-//        // 규모가 크면 페이징 처리 권장
-//        List<Buyer> buyers = buyerRepository.findAll();
-//        for (Buyer b : buyers) {
-//            userGradeService.recalcBuyerTier(b.getId());
-//        }
-//    }
+    @Scheduled(cron = "0 0 0 1 * *")
+    public void recalcAllBuyerTiers() {
+        // 규모가 크면 페이징 처리 권장
+        List<Long> buyerIds = buyerRepository.findAll().stream()
+                .map(Buyer::getId)
+                .toList();
+        userGradeService.recalcMany(buyerIds);
+    }
 }

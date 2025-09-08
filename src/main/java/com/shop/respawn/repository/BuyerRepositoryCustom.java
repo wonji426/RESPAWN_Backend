@@ -31,4 +31,8 @@ public interface BuyerRepositoryCustom {
     Grade findBuyerGrade(Long buyerId);
 
     Long findOnlyBuyerIdByUsername(String username);
+
+    UserQueryDto findUserGradeByUsername(String username);
+
+    UserQueryDto findUserGradeById(Long buyerId);
 }

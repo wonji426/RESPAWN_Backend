@@ -24,4 +24,10 @@ public class UserQueryDto {
         this.role = role;
     }
 
+    public UserQueryDto(Long id, String username, Grade grade) {
+        this.id = id;
+        this.username = username;
+        this.grade = grade;
+    }
+
 }
