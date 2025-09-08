@@ -7,6 +7,7 @@ import com.shop.respawn.dto.user.SellerOrderDetailDto;
 import com.shop.respawn.dto.user.SellerOrderDto;
 import com.shop.respawn.repository.*;
 import com.shop.respawn.util.RedisUtil;
+import com.shop.respawn.util.SessionUtil;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -918,5 +919,35 @@ public class OrderService {
             log.info("{}숫자 변환 실패 시 배송비 0 처리", deliveryFee); // 숫자 변환 실패 시 배송비 0 처리
         }
         return deliveryFee;
+    }
+
+    public String applyPoints(Long buyerId, Long orderId, Long usePointAmount) {
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("주문을 찾을 수 없습니다."));
+
+        if (!order.getBuyer().getId().equals(buyerId)) {
+            throw new RuntimeException("권한이 없습니다.");
+        }
+
+        long activePoints = ledgerPointService.getActive(buyerId);
+        if (usePointAmount > activePoints) {
+            throw new RuntimeException("사용가능 포인트 부족");
+        }
+
+        String redisKey = "order:" + orderId + ":pointAmount";
+
+        if (order.getUsedPointAmount() != 0L) {
+            String data = redisUtil.getData(redisKey);
+            order.setTotalAmount(order.getTotalAmount() + Long.parseLong(data));
+        }
+
+        order.setTotalAmount(order.getTotalAmount() - usePointAmount);
+        redisUtil.setData(redisKey, String.valueOf(usePointAmount));
+        order.setUsedPointAmount(usePointAmount);
+
+        orderRepository.save(order);
+
+        return "포인트 " + usePointAmount + "원이 적용되었습니다.";
     }
 }

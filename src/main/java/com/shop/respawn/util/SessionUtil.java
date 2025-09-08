@@ -1,5 +1,6 @@
 package com.shop.respawn.util;
 
+import com.shop.respawn.security.auth.PrincipalDetails;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,6 +37,13 @@ public class SessionUtil {
         String authorities = authentication.getAuthorities().toString();
         if (authorities.contains("ROLE_USER") || authorities.contains("ROLE_SELLER")) {
             return (Long) session.getAttribute("userId");
+        } else throw new RuntimeException("로그인이 필요합니다.");
+    }
+
+    public static Long getUserIdFromAuthentication(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof PrincipalDetails) {
+            return ((PrincipalDetails) principal).getUserId();
         } else throw new RuntimeException("로그인이 필요합니다.");
     }
 

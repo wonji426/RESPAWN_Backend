@@ -1,12 +1,23 @@
 package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
+import com.shop.respawn.dto.point.ExpiringPointItemDto;
+import com.shop.respawn.dto.point.PointHistoryDto;
+import com.shop.respawn.dto.point.PointLedgerDto;
 import com.shop.respawn.repository.*;
+import com.shop.respawn.util.SessionUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -17,6 +28,7 @@ public class LedgerPointService {
     private final PointLedgerRepository ledgerRepository;
     private final PointConsumeLinkRepository linkRepository;
     private final PointBalanceRepository balanceRepository;
+    private final PointQueryService pointQueryService;
 
     // 내부 유틸: Balance 조회 또는 생성
     private PointBalance getOrCreateBalance(Long buyerId) {
@@ -179,6 +191,64 @@ public class LedgerPointService {
         return linkRepository.findBySaveLedger(save).stream()
                 .mapToLong(PointConsumeLink::getConsumedAmount)
                 .sum();
+    }
+
+    public Page<PointLedgerDto> getSaves(Long buyerId, int page, int size, String sort, Integer year, Integer month) {
+        Sort sortObj = toSort(sort);
+        Pageable pageable = PageRequest.of(page, size, sortObj);
+
+        if (year != null && month != null) {
+            LocalDateTime[] range = toMonthRange(year, month);
+            return pointQueryService.getSavesByMonth(buyerId, range[0], range[1], pageable);
+        }
+        return pointQueryService.getSaves(buyerId, pageable);
+    }
+
+    public Page<PointLedgerDto> getUses(Long buyerId, int page, int size, String sort, Integer year, Integer month) {
+        Sort sortObj = toSort(sort);
+        Pageable pageable = PageRequest.of(page, size, sortObj);
+
+        if (year != null && month != null) {
+            LocalDateTime[] range = toMonthRange(year, month);
+            return pointQueryService.getUsesByMonth(buyerId, range[0], range[1], pageable);
+        }
+        return pointQueryService.getUses(buyerId, pageable);
+    }
+
+    public Page<PointHistoryDto> getAll(Long buyerId, int page, int size, String sort, Integer year, Integer month) {
+        Sort sortObj = toSort(sort);
+        Pageable pageable = PageRequest.of(page, size, sortObj);
+
+        if (year != null && month != null) {
+            LocalDateTime[] range = toMonthRange(year, month);
+            return pointQueryService.getAllByMonth(buyerId, range[0], range[1], pageable);
+        }
+        return pointQueryService.getAll(buyerId, pageable);
+    }
+
+    public List<ExpiringPointItemDto> getMonthlyExpiringList(Long buyerId, int year, int month) {
+        LocalDateTime[] range = toMonthRange(year, month);
+        return pointQueryService.getMonthlyExpiringList(buyerId, range[0], range[1]);
+    }
+
+    // 유틸: "occurredAt,desc" → Sort
+    private Sort toSort(String sortParam) {
+        // "occurredAt,desc" 또는 "amount,asc" 형태를 1개 받아 처리
+        if (sortParam == null || sortParam.isBlank()) {
+            return Sort.by(Sort.Order.desc("occurredAt")).and(Sort.by(Sort.Order.desc("id")));
+        }
+        String[] parts = sortParam.split(",");
+        String prop = parts[0];
+        String dir = (parts.length > 1) ? parts[1] : "desc";
+        Sort.Order order = "asc".equalsIgnoreCase(dir) ? Sort.Order.asc(prop) : Sort.Order.desc(prop);
+        // 기본 tie-break
+        return Sort.by(order).and(Sort.by(Sort.Order.desc("id")));
+    }
+
+    private static LocalDateTime[] toMonthRange(int year, int month) {
+        LocalDate first = LocalDate.of(year, month, 1);
+        LocalDate last = first.withDayOfMonth(first.lengthOfMonth());
+        return new LocalDateTime[]{ first.atStartOfDay(), last.atTime(LocalTime.MAX) };
     }
 
     @Transactional(readOnly = true)
