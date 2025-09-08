@@ -50,15 +50,7 @@ public class UserGradeService {
     }
 
     /**
-     * 구매자 조회용
-     */
-    public UserGradeResponse findBuyerGrade(Authentication authentication) {
-        UserQueryDto userQueryDto = buyerRepository.findUserGradeByUsername(authentication.getName());
-        return new UserGradeResponse(userQueryDto.getId(), userQueryDto.getUsername(), userQueryDto.getGrade());
-    }
-
-    /**
-     * 관리자 조회용
+     * 유저 등급 조회
      */
     public UserGradeResponse findBuyerGradeById(Long buyerId) {
         UserQueryDto userQueryDto = buyerRepository.findUserGradeById(buyerId);

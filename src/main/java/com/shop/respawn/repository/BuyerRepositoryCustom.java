@@ -32,7 +32,5 @@ public interface BuyerRepositoryCustom {
 
     Long findOnlyBuyerIdByUsername(String username);
 
-    UserQueryDto findUserGradeByUsername(String username);
-
     UserQueryDto findUserGradeById(Long buyerId);
 }

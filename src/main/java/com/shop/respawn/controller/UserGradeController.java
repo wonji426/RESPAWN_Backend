@@ -4,6 +4,7 @@ import com.shop.respawn.dto.gradeRecalc.UserGradeResponse;
 import com.shop.respawn.dto.gradeRecalc.GradeRecalcRequest;
 import com.shop.respawn.dto.gradeRecalc.GradeRecalcResponse;
 import com.shop.respawn.service.UserGradeService;
+import com.shop.respawn.util.SessionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +13,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
+import static com.shop.respawn.util.SessionUtil.getUserIdFromAuthentication;
 
 @Slf4j
 @RestController
@@ -25,7 +28,8 @@ public class UserGradeController {
     @GetMapping("/my-grade")
     public ResponseEntity<UserGradeResponse> myGrade(Authentication authentication) {
         // session에서 buyerId 조회 후 buyer의 membershipTier 조회
-        return ResponseEntity.ok(userGradeService.findBuyerGrade(authentication));
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        return ResponseEntity.ok(userGradeService.findBuyerGradeById(buyerId));
     }
 
     // 2) 특정 구매자 등급 조회 (관리자/운영자용)

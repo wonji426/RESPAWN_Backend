@@ -126,15 +126,6 @@ public class BuyerRepositoryImpl implements BuyerRepositoryCustom {
     }
 
     @Override
-    public UserQueryDto findUserGradeByUsername(String username) {
-        return (UserQueryDto) queryFactory
-                .select(buyer.id, buyer.grade)
-                .from(buyer)
-                .where(buyer.username.eq(username))
-                .fetchOne();
-    }
-
-    @Override
     public UserQueryDto findUserGradeById(Long buyerId) {
         return (UserQueryDto) queryFactory
                 .select(buyer.username, buyer.grade)
