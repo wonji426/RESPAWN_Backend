@@ -2,6 +2,7 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.AddressDto;
+import com.shop.respawn.dto.NoticeDto;
 import com.shop.respawn.repository.*;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class MyService {
     private final CouponRepository couponRepository;
     private final BCryptPasswordEncoder encoder;
     private final LedgerPointService ledgerPointService;
+    private final NoticeService noticeService;
 
     private final EntityManager em;
 
@@ -133,6 +135,18 @@ public class MyService {
 
             findOrderItem.getDelivery().setStatus(DeliveryStatus.DELIVERED);
         }
+        NoticeDto noticeDto = new NoticeDto("소셜로그인에 관한 공지사항(1)","소셜로그인은 전화번호 추가가 필요합니다.",NoticeType.ACCOUNT);
+        noticeService.CreateNotice(admin.getId(), noticeDto);
+        NoticeDto noticeDto1 = new NoticeDto("정기점검에 관한 공지사항","정기점검을 실시할 예정입니다..",NoticeType.OPERATIONS);
+        noticeService.CreateNotice(admin.getId(), noticeDto1);
+        NoticeDto noticeDto2 = new NoticeDto("주문에 관한 공지사항","주문 후 주문완료 페이지를 확인해주세요.",NoticeType.ORDER);
+        noticeService.CreateNotice(admin.getId(), noticeDto2);
+        NoticeDto noticeDto3 = new NoticeDto("배송에 관한 공지사항","배송이 지연될 수 있습니다.",NoticeType.SHIPPING);
+        noticeService.CreateNotice(admin.getId(), noticeDto3);
+        NoticeDto noticeDto4 = new NoticeDto("소셜로그인에 관한 공지사항(2)","소셜로그인은 이름 추가가 필요합니다.",NoticeType.ACCOUNT);
+        noticeService.CreateNotice(admin.getId(), noticeDto4);
+        NoticeDto noticeDto5 = new NoticeDto("소셜로그인에 관한 공지사항(3)","소셜로그인은 정보 추가가 필요할 수 있습니다.",NoticeType.ACCOUNT);
+        noticeService.CreateNotice(admin.getId(), noticeDto5);
     }
 
 }
