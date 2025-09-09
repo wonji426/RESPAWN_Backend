@@ -3,6 +3,7 @@ package com.shop.respawn.service;
 import com.shop.respawn.domain.Grade;
 import com.shop.respawn.domain.Order;
 import com.shop.respawn.dto.CouponDTO;
+import com.shop.respawn.dto.coupon.CouponStatusDto;
 import com.shop.respawn.dto.coupon.CouponValidationResult;
 import com.shop.respawn.repository.OrderRepository;
 import com.shop.respawn.util.CouponPolicy;
@@ -147,5 +148,23 @@ public class CouponService {
         return coupons.stream()
                 .map(CouponDTO::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public int countAvailableCouponsByBuyerId(Long buyerId) {
+        LocalDateTime now = LocalDateTime.now();
+        List<CouponStatusDto> coupons = couponRepository.findAllByBuyerIdQueryDsl(buyerId);
+        return (int) coupons.stream()
+                .filter(c -> !c.used() && c.expiresAt() != null && c.expiresAt().isAfter(now))
+                .count();
+    }
+
+    @Transactional(readOnly = true)
+    public int countUnavailableCouponsByBuyerId(Long buyerId) {
+        LocalDateTime now = LocalDateTime.now();
+        List<CouponStatusDto> coupons = couponRepository.findAllByBuyerIdQueryDsl(buyerId);
+        return (int) coupons.stream()
+                .filter(c -> c.used() || c.expiresAt() == null || !c.expiresAt().isAfter(now))
+                .count();
     }
 }

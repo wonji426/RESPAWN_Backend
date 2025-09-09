@@ -1,6 +1,7 @@
 package com.shop.respawn.controller;
 
 import com.shop.respawn.dto.CouponDTO;
+import com.shop.respawn.dto.coupon.CouponCountResponse;
 import com.shop.respawn.dto.coupon.CouponValidationResult;
 import com.shop.respawn.dto.coupon.OrderCouponCheckResponse;
 import com.shop.respawn.service.CouponService;
@@ -69,5 +70,27 @@ public class CouponController {
         Long buyerId = getUserIdFromAuthentication(authentication);
         List<CouponDTO> couponDTOs = couponService.getCouponDTOsByBuyerId(buyerId);
         return ResponseEntity.ok(couponDTOs);
+    }
+
+    /**
+     * 사용 가능한 쿠폰 개수 반환
+     * GET /api/coupons/available/count
+     */
+    @GetMapping("/available/count")
+    public ResponseEntity<CouponCountResponse> getAvailableCouponCount(Authentication authentication) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        int count = couponService.countAvailableCouponsByBuyerId(buyerId);
+        return ResponseEntity.ok(new CouponCountResponse(count));
+    }
+
+    /**
+     * 사용 불가능한 쿠폰 개수 반환
+     * GET /api/coupons/unavailable/count
+     */
+    @GetMapping("/unavailable/count")
+    public ResponseEntity<CouponCountResponse> getUnavailableCouponCount(Authentication authentication) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        int count = couponService.countUnavailableCouponsByBuyerId(buyerId);
+        return ResponseEntity.ok(new CouponCountResponse(count));
     }
 }
