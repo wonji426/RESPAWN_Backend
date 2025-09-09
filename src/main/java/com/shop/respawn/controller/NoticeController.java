@@ -1,0 +1,62 @@
+package com.shop.respawn.controller;
+
+import com.shop.respawn.dto.NoticeDto;
+import com.shop.respawn.dto.NoticeResponse;
+import com.shop.respawn.dto.NoticeSummaryDto;
+import com.shop.respawn.service.NoticeService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+import static com.shop.respawn.util.AuthenticationUtil.getUserIdFromAuthentication;
+
+@RestController
+@RequestMapping("/api/Notices")
+@RequiredArgsConstructor
+public class NoticeController {
+
+    private final NoticeService noticeService;
+
+    /**
+     * 공지사항 등록 컨트롤러
+     */
+    @PostMapping("/register")
+    public ResponseEntity<?> registerItem(
+            Authentication authentication,
+            @RequestBody NoticeDto noticeDto
+    ) {
+        try {
+            Long adminId = getUserIdFromAuthentication(authentication);
+            noticeService.CreateNotice(adminId, noticeDto);
+            return ResponseEntity.ok().body("공지사항 등록 성공");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("공지사항 등록 에러: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 공지사항 목록 조회 컨트롤러 (제목, 공지사항 타입, 생성시간)
+     */
+    @GetMapping("/summaries")
+    public ResponseEntity<List<NoticeSummaryDto>> getNoticeSummaries() {
+        List<NoticeSummaryDto> summaries = noticeService.getNoticeSummaries();
+        return ResponseEntity.ok(summaries);
+    }
+
+    /**
+     * 공지사항 조회
+     */
+    @GetMapping("/view")
+    public ResponseEntity<NoticeResponse> getNotices(@RequestParam Long noticeId) {
+        try {
+            NoticeResponse notice = noticeService.getNotice(noticeId);
+            return ResponseEntity.ok().body(notice);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+    }
+}
