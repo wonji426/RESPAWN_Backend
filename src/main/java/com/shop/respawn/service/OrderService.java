@@ -165,6 +165,7 @@ public class OrderService {
         order.setBuyer(buyer);
         order.setOrderDate(LocalDateTime.now());
         order.setStatus(OrderStatus.TEMPORARY);
+        order.setDeliveryFee(totalDeliveryFee);
         // 필요 시 임시 주문명 부여
         order.setOrderName("임시주문 " + selectedCartItems.size() + "건");
         order.setTotalAmount(totalAmount);
@@ -233,6 +234,7 @@ public class OrderService {
         // 3. 총 결제금액 = 상품금액 + 판매자 배송비
         Long totalAmount = totalItemAmount + deliveryFee;
 
+        order.setDeliveryFee(deliveryFee);
         order.setTotalAmount(totalAmount);
         order.setOriginalAmount(totalAmount);
 
@@ -263,6 +265,9 @@ public class OrderService {
         if (couponCode != null && !couponCode.isBlank()) {
             // 상품 총액 계산을 위해 orderItems를 넘겨 내부에서 상품총액 산출
             computeCouponDiscount(order.getOrderItems(), couponCode);
+            Coupon coupon = couponService.getCouponByCode(couponCode)
+                    .orElseThrow(() -> new RuntimeException("쿠폰이 조회되지 않습니다."));
+            order.setCoupon(coupon);
         }
 
         // 3. 결제 정보 설정 (총금액, 주문명, pgOrderId 등)
@@ -546,6 +551,8 @@ public class OrderService {
         Order order = getOrderById(orderId);
         order.validateOwner(buyerId);   //주문 권한 체크
 
+        Coupon coupon = order.getCoupon();
+
         Payment payment = paymentRepository.findByOrder(order).orElse(null);
 
         // 상품 DTO 변환
@@ -564,7 +571,7 @@ public class OrderService {
         ).orElse(null);
 
         // 최종 DTO 생성
-        return OrderCompleteInfoDto.from(order, itemDtos, deliveryDtos, payment, savedLedger);
+        return OrderCompleteInfoDto.from(order, itemDtos, deliveryDtos, coupon, payment, savedLedger);
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.shop.respawn.dto.order;
 
 import com.shop.respawn.domain.*;
+import com.shop.respawn.dto.coupon.CouponDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,21 +21,26 @@ public class OrderCompleteInfoDto {
 
     private String orderName;                               // 주문명
     private String pgOrderId;                               // 결제주문명
-    private Long totalAmount;                               // 총 결제 가격
     private String paymentStatus;                           // 결제 상태
     private LocalDateTime orderDate;                        //주문일
 
     private List<OrderCompleteItemDto> orderItems;          // 주문 상품 상세 DTO
     private List<OrderCompleteDeliveryDto> deliveryInfo;    // 배송 상세 정보 DTO
+    private CouponDTO couponInfo;                            // 사용한 쿠폰 정보 DTO
     private PaymentInfoDto paymentInfo;                     // 결제 정보 DTO
     private PointBenefitDto pointBenefit;                   // 포인트 적립 DTO
 
+    private Long originalAmount;                            // 원래 금액 (할인/적립 전) [itemTotalPrice + deliveryFee]
+    private Long deliveryFee;                               // 배송비
+    private Long itemTotalPrice;                            // 아이템 총 가격
     private Long usedPointAmount;                           // 사용한 포인트
-    private Long originalAmount;                            // 원래 금액 (할인/적립 전)
+    private Long usedCouponAmount;                          // 사용한 쿠폰 금액
+    private Long totalAmount;                               // 결제한 가격
 
     public static OrderCompleteInfoDto from(Order order,
                                             List<OrderCompleteItemDto> items,
                                             List<OrderCompleteDeliveryDto> deliveries,
+                                            Coupon coupon,
                                             Payment payment,
                                             PointLedger savedLedger) {
 
@@ -45,15 +51,19 @@ public class OrderCompleteInfoDto {
                 .email(order.getBuyer().getEmail())
                 .orderName(order.getOrderName())
                 .pgOrderId(order.getPgOrderId())
-                .totalAmount(order.getTotalAmount())
                 .paymentStatus(order.getPaymentStatus())
                 .orderDate(order.getOrderDate())
                 .orderItems(items)
                 .deliveryInfo(deliveries)
+                .couponInfo(CouponDTO.fromEntity(coupon))
                 .paymentInfo(PaymentInfoDto.from(payment))
                 .pointBenefit(PointBenefitDto.from(savedLedger))
-                .usedPointAmount(order.getUsedPointAmount())
                 .originalAmount(order.getOriginalAmount())
+                .itemTotalPrice(order.getOriginalAmount() - order.getDeliveryFee())
+                .deliveryFee(order.getDeliveryFee())
+                .usedPointAmount(order.getUsedPointAmount())
+                .usedCouponAmount(order.getUsedCouponAmount())
+                .totalAmount(order.getTotalAmount())
                 .build();
     }
 

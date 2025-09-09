@@ -34,9 +34,14 @@ public class Order {
     @Enumerated(STRING)
     private OrderStatus status;
 
+    @ManyToOne(fetch = LAZY)
+    @JoinColumn(name = "coupon_id")
+    private Coupon coupon;
+
     private String pgOrderId;       // 토스페이먼츠용 주문번호
     private String orderName;       // 구매상품명 (예: "상품명 외 2건")
     private Long totalAmount;       // 총 결제 금액
+    private Long deliveryFee;
     private String paymentStatus;   // 결제 상태 (READY, SUCCESS, FAIL 등)
 
     // 포인트 사용 정보 추가
