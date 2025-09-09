@@ -1,4 +1,4 @@
-package com.shop.respawn.dto;
+package com.shop.respawn.dto.coupon;
 
 import java.time.LocalDateTime;
 

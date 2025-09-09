@@ -1,9 +1,6 @@
 package com.shop.respawn.controller;
 
-import com.shop.respawn.dto.CouponDTO;
-import com.shop.respawn.dto.coupon.CouponCountResponse;
-import com.shop.respawn.dto.coupon.CouponValidationResult;
-import com.shop.respawn.dto.coupon.OrderCouponCheckResponse;
+import com.shop.respawn.dto.coupon.*;
 import com.shop.respawn.service.CouponService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -69,10 +66,13 @@ public class CouponController {
      * @return 쿠폰 목록
      */
     @GetMapping("/view")
-    public ResponseEntity<List<CouponDTO>> getCouponsByBuyerId(Authentication authentication) {
+    public ResponseEntity<List<CouponUsageStatusDto>> getCouponsByBuyerIdAndOrder(
+            Authentication authentication,
+            @RequestParam Long orderId
+    ) {
         Long buyerId = getUserIdFromAuthentication(authentication);
-        List<CouponDTO> couponDTOs = couponService.getCouponDTOsByBuyerId(buyerId);
-        return ResponseEntity.ok(couponDTOs);
+        List<CouponUsageStatusDto> couponsStatus = couponService.getCouponsUsageStatusByBuyerAndOrder(buyerId, orderId);
+        return ResponseEntity.ok(couponsStatus);
     }
 
     /**

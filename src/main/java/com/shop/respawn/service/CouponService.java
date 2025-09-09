@@ -2,8 +2,9 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.Grade;
 import com.shop.respawn.domain.Order;
-import com.shop.respawn.dto.CouponDTO;
+import com.shop.respawn.dto.coupon.CouponDTO;
 import com.shop.respawn.dto.coupon.CouponStatusDto;
+import com.shop.respawn.dto.coupon.CouponUsageStatusDto;
 import com.shop.respawn.dto.coupon.CouponValidationResult;
 import com.shop.respawn.repository.OrderRepository;
 import com.shop.respawn.util.CouponPolicy;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -180,5 +182,34 @@ public class CouponService {
     public Page<CouponDTO> getUnavailableCouponsByBuyerId(Long buyerId, Pageable pageable) {
         return couponRepository.findAllUnavailableByBuyerId(buyerId, pageable)
                 .map(CouponDTO::fromEntity);
+    }
+
+    public List<CouponUsageStatusDto> getCouponsUsageStatusByBuyerAndOrder(Long buyerId, Long orderId) {
+        List<Coupon> coupons = couponRepository.findAllByBuyerId(buyerId);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("주문을 찾을 수 없습니다: " + orderId));
+
+        long totalItemAmount = order.getOrderItems().stream()
+                .mapToLong(oi -> oi.getOrderPrice() * oi.getCount())
+                .sum();
+
+        List<CouponUsageStatusDto> result = new ArrayList<>();
+
+        for (Coupon coupon : coupons) {
+            CouponDTO dto = CouponDTO.fromEntity(coupon);
+            String failReason = null;
+
+            if (coupon.isUsed()) {
+                failReason = "이미 사용된 쿠폰입니다.";
+            } else if (coupon.getExpiresAt() == null || !coupon.getExpiresAt().isAfter(LocalDateTime.now())) {
+                failReason = "만료된 쿠폰입니다.";
+            } else if (totalItemAmount <= coupon.getCouponAmount()) {
+                failReason = "상품 금액이 쿠폰 금액보다 커야 합니다.";
+            }
+            boolean usable = (failReason == null);
+            result.add(CouponUsageStatusDto.create(dto, usable, failReason));
+        }
+
+        return result;
     }
 }
