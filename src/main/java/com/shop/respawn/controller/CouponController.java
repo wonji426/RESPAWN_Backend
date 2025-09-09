@@ -6,6 +6,9 @@ import com.shop.respawn.dto.coupon.CouponValidationResult;
 import com.shop.respawn.dto.coupon.OrderCouponCheckResponse;
 import com.shop.respawn.service.CouponService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -92,5 +95,29 @@ public class CouponController {
         Long buyerId = getUserIdFromAuthentication(authentication);
         int count = couponService.countUnavailableCouponsByBuyerId(buyerId);
         return ResponseEntity.ok(new CouponCountResponse(count));
+    }
+
+    @GetMapping("/available")
+    public ResponseEntity<Page<CouponDTO>> getAvailableCoupons(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<CouponDTO> coupons = couponService.getAvailableCouponsByBuyerId(buyerId, pageable);
+        return ResponseEntity.ok(coupons);
+    }
+
+    @GetMapping("/unavailable")
+    public ResponseEntity<Page<CouponDTO>> getUnavailableCoupons(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<CouponDTO> coupons = couponService.getUnavailableCouponsByBuyerId(buyerId, pageable);
+        return ResponseEntity.ok(coupons);
     }
 }

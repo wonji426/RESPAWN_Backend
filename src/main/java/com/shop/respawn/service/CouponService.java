@@ -13,6 +13,8 @@ import com.shop.respawn.repository.CouponRepository;
 import com.shop.respawn.repository.BuyerRepository;
 import com.shop.respawn.util.RedisUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -166,5 +168,17 @@ public class CouponService {
         return (int) coupons.stream()
                 .filter(c -> c.used() || c.expiresAt() == null || !c.expiresAt().isAfter(now))
                 .count();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CouponDTO> getAvailableCouponsByBuyerId(Long buyerId, Pageable pageable) {
+        return couponRepository.findAllAvailableByBuyerId(buyerId, pageable)
+                .map(CouponDTO::fromEntity);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CouponDTO> getUnavailableCouponsByBuyerId(Long buyerId, Pageable pageable) {
+        return couponRepository.findAllUnavailableByBuyerId(buyerId, pageable)
+                .map(CouponDTO::fromEntity);
     }
 }
