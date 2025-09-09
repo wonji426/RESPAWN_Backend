@@ -55,7 +55,7 @@ public class OrderCompleteInfoDto {
                 .orderDate(order.getOrderDate())
                 .orderItems(items)
                 .deliveryInfo(deliveries)
-                .couponInfo(CouponDTO.fromEntity(coupon))
+                .couponInfo(coupon != null ? CouponDTO.fromEntity(coupon) : null)
                 .paymentInfo(PaymentInfoDto.from(payment))
                 .pointBenefit(PointBenefitDto.from(savedLedger))
                 .originalAmount(order.getOriginalAmount())
