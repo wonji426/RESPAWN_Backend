@@ -76,25 +76,14 @@ public class CouponController {
     }
 
     /**
-     * 사용 가능한 쿠폰 개수 반환
-     * GET /api/coupons/available/count
+     * 쿠폰 개수 반환
+     * GET /api/coupons/count
      */
-    @GetMapping("/available/count")
-    public ResponseEntity<CouponCountResponse> getAvailableCouponCount(Authentication authentication) {
+    @GetMapping("/count")
+    public ResponseEntity<CouponCountDto> getCouponCount(Authentication authentication) {
         Long buyerId = getUserIdFromAuthentication(authentication);
-        int count = couponService.countAvailableCouponsByBuyerId(buyerId);
-        return ResponseEntity.ok(new CouponCountResponse(count));
-    }
-
-    /**
-     * 사용 불가능한 쿠폰 개수 반환
-     * GET /api/coupons/unavailable/count
-     */
-    @GetMapping("/unavailable/count")
-    public ResponseEntity<CouponCountResponse> getUnavailableCouponCount(Authentication authentication) {
-        Long buyerId = getUserIdFromAuthentication(authentication);
-        int count = couponService.countUnavailableCouponsByBuyerId(buyerId);
-        return ResponseEntity.ok(new CouponCountResponse(count));
+        CouponCountDto count = couponService.countCouponsByBuyerId(buyerId);
+        return ResponseEntity.ok(count);
     }
 
     @GetMapping("/available")
