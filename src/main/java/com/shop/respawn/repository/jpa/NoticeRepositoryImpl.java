@@ -4,6 +4,9 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.shop.respawn.dto.NoticeSummaryDto;
 import com.shop.respawn.dto.QNoticeSummaryDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +40,27 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom{
                 ))
                 .from(notice)
                 .fetch();
+    }
+
+    @Override
+    public Page<NoticeSummaryDto> findNoticeSummaries(Pageable pageable) {
+        List<NoticeSummaryDto> content = queryFactory
+                .select(new QNoticeSummaryDto(
+                        notice.title,
+                        notice.noticeType,
+                        notice.createdAt
+                ))
+                .from(notice)
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        Long total = queryFactory
+                .select(notice.count())
+                .from(notice)
+                .fetchOne();
+
+        return new PageImpl<>(content, pageable, total != null ? total : 0L);
     }
 
 }

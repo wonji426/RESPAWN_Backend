@@ -5,6 +5,10 @@ import com.shop.respawn.dto.NoticeResponse;
 import com.shop.respawn.dto.NoticeSummaryDto;
 import com.shop.respawn.service.NoticeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -15,7 +19,7 @@ import java.util.List;
 import static com.shop.respawn.util.AuthenticationUtil.getUserIdFromAuthentication;
 
 @RestController
-@RequestMapping("/api/Notices")
+@RequestMapping("/api/notices")
 @RequiredArgsConstructor
 public class NoticeController {
 
@@ -39,11 +43,15 @@ public class NoticeController {
     }
 
     /**
-     * 공지사항 목록 조회 컨트롤러 (제목, 공지사항 타입, 생성시간)
+     * 공지사항 목록 조회 컨트롤러 페이징(제목, 공지사항 타입, 생성시간)
      */
     @GetMapping("/summaries")
-    public ResponseEntity<List<NoticeSummaryDto>> getNoticeSummaries() {
-        List<NoticeSummaryDto> summaries = noticeService.getNoticeSummaries();
+    public ResponseEntity<Page<NoticeSummaryDto>> getNoticeSummaries(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<NoticeSummaryDto> summaries = noticeService.getNoticeSummaries(pageable);
         return ResponseEntity.ok(summaries);
     }
 

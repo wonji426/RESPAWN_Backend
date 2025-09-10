@@ -9,6 +9,8 @@ import com.shop.respawn.repository.jpa.AdminRepository;
 import com.shop.respawn.repository.jpa.NoticeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +51,14 @@ public class NoticeService {
     public List<NoticeSummaryDto> getNoticeSummaries() {
         return noticeRepository.findNoticeSummaries();
     }
+
+    /**
+     * 공지사항 목록 조회 메서드 페이징 (제목, 공지사항 타입, 생성시간)
+     */
+    public Page<NoticeSummaryDto> getNoticeSummaries(Pageable pageable) {
+        return noticeRepository.findNoticeSummaries(pageable);
+    }
+
 
     /**
      * 공지사항 조회 메서드
