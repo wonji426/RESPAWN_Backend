@@ -107,7 +107,6 @@ public class CouponService {
         }
 
         order.setTotalAmount(order.getTotalAmount() - coupon.getCouponAmount());
-        order.setUsedCouponAmount(coupon.getCouponAmount());
 
         String redisKey = "order:" + orderId + ":couponAmount";
         redisUtil.setData(redisKey, String.valueOf(coupon.getCouponAmount()));
@@ -126,8 +125,6 @@ public class CouponService {
         String data = redisUtil.getData(redisKey);
         order.setTotalAmount(order.getTotalAmount() + Long.parseLong(data));
         redisUtil.deleteData(redisKey);
-
-        order.setUsedCouponAmount(0L);
 
         // 5) 통과
         return CouponValidationResult.ok(); // 비즈니스 결과 반환 [9]

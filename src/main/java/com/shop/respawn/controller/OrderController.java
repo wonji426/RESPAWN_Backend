@@ -4,6 +4,7 @@ import com.shop.respawn.dto.*;
 import com.shop.respawn.dto.order.*;
 import com.shop.respawn.dto.user.SellerOrderDetailDto;
 import com.shop.respawn.dto.user.SellerOrderDto;
+import com.shop.respawn.exception.ApiMessage;
 import com.shop.respawn.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -264,11 +265,8 @@ public class OrderController {
 
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            orderService.completeRefund(orderItemId, sellerId);
-            return ResponseEntity.ok(Map.of(
-                    "message", "환불 요청이 성공적으로 완료되었습니다.",
-                    "orderItemId", orderItemId
-            ));
+            String content = orderService.completeRefund(orderItemId, sellerId);
+            return ResponseEntity.ok(ApiMessage.of("success", content));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
