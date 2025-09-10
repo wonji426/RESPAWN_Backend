@@ -8,8 +8,6 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 
 public interface CouponRepositoryCustom {
-    List<Coupon> findAllUnusedByBuyerId(Long buyerId);
-
     List<CouponStatusDto> findAllByBuyerIdQueryDsl(Long buyerId);
 
     Page<Coupon> findAllAvailableByBuyerId(Long buyerId, Pageable pageable);
