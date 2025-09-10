@@ -55,7 +55,7 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
             catIds = cats.stream()
                     .map(c -> {
                         Object idVal = c.getId(); // Category.id 타입이 ObjectId 또는 String일 수 있음
-                        return (idVal instanceof ObjectId oid) ? oid : new ObjectId(idVal.toString());
+                        return new ObjectId(idVal.toString());
                     })
                     .toList();
         }

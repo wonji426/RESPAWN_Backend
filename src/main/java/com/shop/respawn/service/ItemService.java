@@ -98,10 +98,6 @@ public class ItemService {
         return new ItemCategoryDto(result, itemDtos);
     }
 
-    public List<Item> getAllItems() {
-        return itemRepository.findAll();
-    }
-
     public List<Item> getItemsBySellerId(String sellerId) {
         return itemRepository.findBySellerId(sellerId);
     }

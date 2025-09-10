@@ -144,14 +144,6 @@ public class CouponService {
     }
 
     @Transactional(readOnly = true)
-    public List<CouponDTO> getCouponDTOsByBuyerId(Long buyerId) {
-        List<Coupon> coupons = couponRepository.findAllUnusedByBuyerId(buyerId);
-        return coupons.stream()
-                .map(CouponDTO::fromEntity)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
     public CouponCountDto countCouponsByBuyerId(Long buyerId) {
         LocalDateTime now = LocalDateTime.now();
         List<CouponStatusDto> coupons = couponRepository.findAllByBuyerIdQueryDsl(buyerId);

@@ -29,7 +29,7 @@ public class ImageController {
     @GetMapping("/mainBanner/upload")
     public String createForm(Model model) {
         model.addAttribute("mainBannerForm", new MainBannerForm());
-        return "mainBanner/mainBannerForm";
+        return null; // "mainBanner/mainBannerForm"
     }
 
     @PostMapping("/mainBanner/upload")
@@ -51,14 +51,14 @@ public class ImageController {
         // 업로드 성공 메시지 전달
         model.addAttribute("successMessage", "업로드에 성공하였습니다.");
 
-        return "home";
+        return null; // "home"
     }
 
     @GetMapping("/mainBanner/view")
     public String showMainBanners(Model model) {
         List<MainBanner> banners = mainBannerRepository.findAll();
         model.addAttribute("banners", banners);
-        return "mainBanner/mainBannerView";
+        return null; // "mainBanner/mainBannerView"
     }
 
     @GetMapping("/mainBanner/image/{id}")
@@ -73,7 +73,8 @@ public class ImageController {
     @GetMapping("/mainBanner")
     public String mainBanner(@RequestParam(required = false) String titleInput, Model model) {
         model.addAttribute("titleInput", titleInput);
-        return "/mainBanner/mainBannerView"; // 위 HTML 파일명
+        // 위 HTML 파일명
+        return null; // "/mainBanner/mainBannerView"
     }
 
     @GetMapping("/mainBanner/image/title/{title}")

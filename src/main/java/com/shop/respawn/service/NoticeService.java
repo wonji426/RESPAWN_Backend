@@ -46,13 +46,6 @@ public class NoticeService {
     }
 
     /**
-     * 공지사항 목록 조회 메서드 (제목, 공지사항 타입, 생성시간)
-     */
-    public List<NoticeSummaryDto> getNoticeSummaries() {
-        return noticeRepository.findNoticeSummaries();
-    }
-
-    /**
      * 공지사항 목록 조회 메서드 페이징 (제목, 공지사항 타입, 생성시간)
      */
     public Page<NoticeSummaryDto> getNoticeSummaries(Pageable pageable) {
