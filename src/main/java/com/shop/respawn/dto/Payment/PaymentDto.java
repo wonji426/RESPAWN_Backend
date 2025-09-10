@@ -16,4 +16,5 @@ public class PaymentDto {
     private String merchantUid;
     private Long buyerId;  // 추가
     private Long orderId;  // 추가
+    private Long usePointAmount;
 }

@@ -777,7 +777,7 @@ public class OrderService {
     /**
      * 판매자 환불 요청 완료
      */
-    public void completeRefund(Long orderItemId, Long sellerId) {
+    public String completeRefund(Long orderItemId, Long sellerId) {
         // 주문 아이템 조회
         OrderItem orderItem = orderItemRepository.findById(orderItemId)
                 .orElseThrow(() -> new RuntimeException("주문 아이템을 찾을 수 없습니다: " + orderItemId));
@@ -802,6 +802,16 @@ public class OrderService {
         itemRepository.save(item);
 
         // (필요시) 주문 상태 또는 결제 상태 업데이트 등 추가 처리 가능
+        long price = orderItem.getOrderPrice() * orderItem.getCount();
+        long usePointAmount = -(orderItem.getOrder().getPointLedger().getAmount());
+        if (price >= usePointAmount) {
+            Long buyerId = orderItem.getOrder().getBuyer().getId();
+            Long pointLedgerId = orderItem.getOrder().getPointLedger().getId();
+            ledgerPointService.cancelUse(buyerId, pointLedgerId, "환불에 의한 포인트 사용 취소", "System");
+        } else {
+            return "사용 포인트 보다 작은 금액의 상품을 환불 할 경우 포인트는 반환되지 않습니다.";
+        }
+        return "환불이 완료 되었습니다.";
     }
 
     /**
@@ -940,14 +950,14 @@ public class OrderService {
 
         String redisKey = "order:" + orderId + ":pointAmount";
 
-        if (order.getUsedPointAmount() != 0L) {
+        if (redisUtil.getData(redisKey) != null) {
             String data = redisUtil.getData(redisKey);
             order.setTotalAmount(order.getTotalAmount() + Long.parseLong(data));
         }
 
         order.setTotalAmount(order.getTotalAmount() - usePointAmount);
         redisUtil.setData(redisKey, String.valueOf(usePointAmount));
-        order.setUsedPointAmount(usePointAmount);
+//        order.setUsedPointAmount(usePointAmount);
 
         orderRepository.save(order);
 

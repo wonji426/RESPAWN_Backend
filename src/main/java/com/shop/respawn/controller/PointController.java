@@ -123,6 +123,25 @@ public class PointController {
     }
 
     /**
+     * 포인트 사용 취소
+     */
+    @PostMapping("/cancelUse")
+    public ResponseEntity<String> cancelUse(
+            @RequestParam("buyerId") Long buyerId,
+            @RequestParam("useLedgerId") Long useLedgerId,
+            @RequestParam("reason") String reason,
+            @RequestParam("actor") String actor) {
+        try {
+            ledgerPointService.cancelUse(buyerId, useLedgerId, reason, actor);
+            return ResponseEntity.ok("포인트 사용 취소가 완료되었습니다.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("잘못된 요청: " + e.getMessage());
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(500).body("서버 오류: " + e.getMessage());
+        }
+    }
+
+    /**
      * 포인트 통합 내역
      * 예시: /api/points/history?page=0&size=20&sort=occurredAt,desc
      */

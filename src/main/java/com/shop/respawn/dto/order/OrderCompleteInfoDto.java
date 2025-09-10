@@ -61,8 +61,8 @@ public class OrderCompleteInfoDto {
                 .originalAmount(order.getOriginalAmount())
                 .itemTotalPrice(order.getOriginalAmount() - order.getDeliveryFee())
                 .deliveryFee(order.getDeliveryFee())
-                .usedPointAmount(order.getUsedPointAmount())
-                .usedCouponAmount(order.getUsedCouponAmount())
+                .usedPointAmount(order.getPointLedger() != null ? order.getPointLedger().getAmount() : null)
+                .usedCouponAmount(coupon != null ? coupon.getCouponAmount() : null)
                 .totalAmount(order.getTotalAmount())
                 .build();
     }

@@ -56,7 +56,7 @@ public class LedgerPointService {
 
     // FIFO 사용
     @Transactional
-    public void usePoints(Long buyerId, long useAmount, Long refOrderId, String reason, String actor) {
+    public PointLedger usePoints(Long buyerId, long useAmount, Long refOrderId, String reason, String actor) {
         if (useAmount <= 0) throw new IllegalArgumentException("사용 금액은 0보다 커야 합니다.");
         PointBalance bal = getOrCreateBalance(buyerId);
         if (bal.getActive() < useAmount) {
@@ -94,6 +94,7 @@ public class LedgerPointService {
         bal.addActive(-useAmount);
         bal.addUsed(useAmount);
         balanceRepository.save(bal);
+        return use;
     }
 
     // 사용 취소
@@ -101,6 +102,9 @@ public class LedgerPointService {
     public void cancelUse(Long buyerId, Long useLedgerId, String reason, String actor) {
         PointLedger use = ledgerRepository.findById(useLedgerId)
                 .orElseThrow(() -> new RuntimeException("USE 레코드를 찾을 수 없습니다."));
+        if (!use.getBuyer().getId().equals(buyerId)) {
+            throw new IllegalArgumentException("지급자 ID 불일치");
+        }
         if (use.getType() != PointTransactionType.USE) {
             throw new IllegalArgumentException("USE 레코드가 아닙니다.");
         }
@@ -115,9 +119,9 @@ public class LedgerPointService {
         // 링크 되돌리기(최근 링크부터 되돌리는 정책 가능. 여기선 단순 전체 되돌림)
         List<PointConsumeLink> links = linkRepository.findByUseLedger(use);
         for (PointConsumeLink link : links) {
-            // 소비를 되돌릴 땐 별도 링크가 필요한가?
-            // 감사 추적용으로 CANCEL_USE도 SAVE와의 링크를 남길 수 있지만, 단순화해 생략 가능.
-            // 필요 시: linkRepository.save(PointConsumeLink.of(link.getSaveLedger(), cancelUse, link.getConsumedAmount()));
+            // 기존 USE → SAVE 링크를 기반으로 CANCEL_USE → SAVE 링크를 생성해 저장
+            PointConsumeLink cancelLink = PointConsumeLink.of(link.getSaveLedger(), cancelUse, link.getConsumedAmount());
+            linkRepository.save(cancelLink);
         }
         // 집계 되돌림
         PointBalance bal = getOrCreateBalance(buyer.getId());

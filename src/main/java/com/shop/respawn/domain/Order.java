@@ -46,9 +46,10 @@ public class Order {
 
     // 포인트 사용 정보 추가
     private Long originalAmount;        // 포인트 사용 전 원래 금액
-    private Long usedPointAmount = 0L;  // 사용한 포인트 금액
-    private Long usedCouponAmount = 0L; // 사용한 포인트 금액
 
+    @ManyToOne(fetch = LAZY)
+    @JoinColumn(name = "point_ledger_id")
+    private PointLedger pointLedger; // 사용한 포인트 금액
 
     //==연관관계 메서드==//
     public void setBuyer(Buyer buyer) {
