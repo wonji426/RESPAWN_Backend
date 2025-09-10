@@ -34,6 +34,7 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom{
     public Page<NoticeSummaryDto> findNoticeSummaries(Pageable pageable) {
         List<NoticeSummaryDto> content = queryFactory
                 .select(new QNoticeSummaryDto(
+                        notice.id,
                         notice.title,
                         notice.noticeType,
                         notice.createdAt
