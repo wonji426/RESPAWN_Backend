@@ -3,7 +3,7 @@ package com.shop.respawn.service;
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.AddressDto;
 import com.shop.respawn.dto.NoticeDto;
-import com.shop.respawn.repository.*;
+import com.shop.respawn.repository.jpa.*;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;

@@ -2,7 +2,7 @@ package com.shop.respawn.controller;
 
 import com.mongodb.client.gridfs.model.GridFSFile;
 import com.shop.respawn.domain.MainBanner;
-import com.shop.respawn.repository.mainBannerRepository;
+import com.shop.respawn.repository.mongo.mainBannerRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;

@@ -3,7 +3,7 @@ package com.shop.respawn.security.oauth;
 import com.shop.respawn.domain.Buyer;
 import com.shop.respawn.domain.Grade;
 import com.shop.respawn.domain.Role;
-import com.shop.respawn.repository.BuyerRepository;
+import com.shop.respawn.repository.jpa.BuyerRepository;
 import com.shop.respawn.security.auth.PrincipalDetails;
 import com.shop.respawn.security.oauth.provider.GoogleUserInfo;
 import com.shop.respawn.security.oauth.provider.KakaoUserInfo;

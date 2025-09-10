@@ -17,7 +17,7 @@ import static lombok.AccessLevel.*;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor(access = PROTECTED)
-public class Buyer extends BaseTimeEntity {
+public class Buyer extends BaseTimeEntity implements User {
 
     @Id @GeneratedValue
     @Column(name = "buyer_id")

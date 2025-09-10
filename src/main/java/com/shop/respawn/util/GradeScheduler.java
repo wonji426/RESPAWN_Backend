@@ -1,7 +1,7 @@
 package com.shop.respawn.util;
 
 import com.shop.respawn.domain.Buyer;
-import com.shop.respawn.repository.BuyerRepository;
+import com.shop.respawn.repository.jpa.BuyerRepository;
 import com.shop.respawn.service.UserGradeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;

@@ -1,7 +1,7 @@
 package com.shop.respawn.exception;
 
 import com.shop.respawn.domain.Buyer;
-import com.shop.respawn.repository.BuyerRepository;
+import com.shop.respawn.repository.jpa.BuyerRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;

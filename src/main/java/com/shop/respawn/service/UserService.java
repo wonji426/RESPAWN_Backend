@@ -7,9 +7,10 @@ import com.shop.respawn.dto.findInfo.ResetPasswordRequest;
 import com.shop.respawn.dto.query.UserQueryDto;
 import com.shop.respawn.dto.user.*;
 import com.shop.respawn.email.EmailService;
-import com.shop.respawn.repository.AdminRepository;
-import com.shop.respawn.repository.BuyerRepository;
-import com.shop.respawn.repository.SellerRepository;
+import com.shop.respawn.repository.jpa.AdminRepository;
+import com.shop.respawn.repository.jpa.BuyerRepository;
+import com.shop.respawn.repository.jpa.SellerRepository;
+import com.shop.respawn.repository.jpa.UserRepositoryCustom;
 import com.shop.respawn.security.auth.PrincipalDetails;
 import com.shop.respawn.sms.SmsService;
 import com.shop.respawn.util.RedisUtil;
@@ -718,47 +719,40 @@ public class UserService {
             case "[ROLE_USER]" -> {
                 Buyer buyer = buyerRepository.findByUsername(username);
                 if (buyer == null) throw new RuntimeException("구매자 정보가 없습니다.");
-                Long buyerId = buyer.getId();
-
-                // 이메일 중복 검사 (자기 자신 제외)
-                if (request.getEmail() != null) {
-                    boolean dup = buyerRepository.existsByEmailAndIdNot(request.getEmail(), buyerId)
-                            || sellerRepository.existsByEmail(request.getEmail());
-                    if (dup) throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
-                    buyer.updateEmail(request.getEmail());
-                }
-                // 전화번호 중복 검사 (자기 자신 제외)
-                if (request.getPhoneNumber() != null) {
-                    boolean dup = buyerRepository.existsByPhoneNumberAndIdNot(request.getPhoneNumber(), buyerId)
-                            || sellerRepository.existsByPhoneNumber(request.getPhoneNumber());
-                    if (dup) throw new IllegalArgumentException("이미 사용 중인 전화번호입니다.");
-                    buyer.updatePhoneNumber(request.getPhoneNumber());
-                }
-                if (request.getName() != null) buyer.updateName(request.getName());
-                // 변경감지로 저장
+                updateUserInfo(buyer, request, buyerRepository, sellerRepository);
             }
 
             case "[ROLE_SELLER]" -> {
                 Seller seller = sellerRepository.findByUsername(username);
                 if (seller == null) throw new RuntimeException("판매자 정보가 없습니다.");
-                Long sellerId = seller.getId();
-
-                if (request.getEmail() != null) {
-                    boolean dup = sellerRepository.existsByEmailAndIdNot(request.getEmail(), sellerId)
-                            || buyerRepository.existsByEmail(request.getEmail());
-                    if (dup) throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
-                    seller.updateEmail(request.getEmail());
-                }
-                if (request.getPhoneNumber() != null) {
-                    boolean dup = sellerRepository.existsByPhoneNumberAndIdNot(request.getPhoneNumber(), sellerId)
-                            || buyerRepository.existsByPhoneNumber(request.getPhoneNumber());
-                    if (dup) throw new IllegalArgumentException("이미 사용 중인 전화번호입니다.");
-                    seller.updatePhoneNumber(request.getPhoneNumber());
-                }
-                if (request.getName() != null) seller.updateName(request.getName());
+                updateUserInfo(seller, request, sellerRepository, buyerRepository);
             }
 
             default -> throw new RuntimeException("지원하지 않는 역할입니다.");
+        }
+    }
+
+    public <T extends User> void updateUserInfo(T user, ProfileUpdateRequest request,
+                                                UserRepositoryCustom<T> userRepo,
+                                                UserRepositoryCustom<? extends User> otherRepo) {
+        Long userId = user.getId();
+
+        if (request.getEmail() != null) {
+            boolean dup = userRepo.existsByEmailAndIdNot(request.getEmail(), userId)
+                    || otherRepo.existsByEmail(request.getEmail());
+            if (dup) throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+            user.updateEmail(request.getEmail());
+        }
+
+        if (request.getPhoneNumber() != null) {
+            boolean dup = userRepo.existsByPhoneNumberAndIdNot(request.getPhoneNumber(), userId)
+                    || otherRepo.existsByPhoneNumber(request.getPhoneNumber());
+            if (dup) throw new IllegalArgumentException("이미 사용 중인 전화번호입니다.");
+            user.updatePhoneNumber(request.getPhoneNumber());
+        }
+
+        if (request.getName() != null) {
+            user.updateName(request.getName());
         }
     }
 

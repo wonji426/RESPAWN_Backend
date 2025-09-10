@@ -1,8 +1,8 @@
 package com.shop.respawn.exception;
 
 import com.shop.respawn.dto.query.FailureResultDto;
-import com.shop.respawn.repository.BuyerRepository;
-import com.shop.respawn.repository.SellerRepository;
+import com.shop.respawn.repository.jpa.BuyerRepository;
+import com.shop.respawn.repository.jpa.SellerRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
