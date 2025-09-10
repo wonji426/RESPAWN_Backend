@@ -3,10 +3,11 @@ package com.shop.respawn.service;
 import com.shop.respawn.domain.Grade;
 import com.shop.respawn.dto.gradeRecalc.UserGradeResponse;
 import com.shop.respawn.dto.gradeRecalc.GradeRecalcResponse;
+import com.shop.respawn.dto.query.UserQueryDto;
 import com.shop.respawn.util.GradePolicy;
 import com.shop.respawn.domain.Buyer;
-import com.shop.respawn.repository.BuyerRepository;
-import com.shop.respawn.repository.PaymentRepository;
+import com.shop.respawn.repository.jpa.BuyerRepository;
+import com.shop.respawn.repository.jpa.PaymentRepository;
 import com.shop.respawn.util.MonthlyPeriodUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,15 +48,12 @@ public class UserGradeService {
         // 변경감지로 flush
     }
 
-    // 결제 성공 시에도 '저번달' 누적 기준으로 등급 산정
-    public void onPaymentSuccess(Long buyerId) {
-        recalcBuyerGrade(buyerId);
-    }
-
-    public UserGradeResponse findBuyerGrade(Long buyerId) {
-        Buyer buyer = buyerRepository.findById(buyerId)
-                .orElseThrow(() -> new RuntimeException("구매자 없음: " + buyerId));
-        return new UserGradeResponse(buyerId, buyer.getUsername(), buyer.getGrade());
+    /**
+     * 유저 등급 조회
+     */
+    public UserGradeResponse findBuyerGradeById(Long buyerId) {
+        UserQueryDto userQueryDto = buyerRepository.findUserGradeById(buyerId);
+        return new UserGradeResponse(buyerId, userQueryDto.getUsername(), userQueryDto.getGrade());
     }
 
     /**

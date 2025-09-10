@@ -34,14 +34,22 @@ public class Order {
     @Enumerated(STRING)
     private OrderStatus status;
 
-    private String pgOrderId;    // 토스페이먼츠용 주문번호
-    private String orderName;      // 구매상품명 (예: "상품명 외 2건")
-    private Long totalAmount;   // 총 결제 금액
-    private String paymentStatus;  // 결제 상태 (READY, SUCCESS, FAIL 등)
+    @ManyToOne(fetch = LAZY)
+    @JoinColumn(name = "coupon_id")
+    private Coupon coupon;
+
+    private String pgOrderId;       // 토스페이먼츠용 주문번호
+    private String orderName;       // 구매상품명 (예: "상품명 외 2건")
+    private Long totalAmount;       // 총 결제 금액
+    private Long deliveryFee;
+    private String paymentStatus;   // 결제 상태 (READY, SUCCESS, FAIL 등)
 
     // 포인트 사용 정보 추가
-    private Long usedPointAmount = 0L; // 사용한 포인트 금액
-    private Long originalAmount; // 포인트 사용 전 원래 금액
+    private Long originalAmount;        // 포인트 사용 전 원래 금액
+
+    @ManyToOne(fetch = LAZY)
+    @JoinColumn(name = "point_ledger_id")
+    private PointLedger pointLedger; // 사용한 포인트 금액
 
     //==연관관계 메서드==//
     public void setBuyer(Buyer buyer) {
@@ -74,14 +82,6 @@ public class Order {
         // 첫 번째 상품 정보 조회 (ItemRepository가 필요하므로 Service에서 처리)
         int itemCount = orderItems.size();
         return itemCount == 1 ? "상품 1건" : "상품 " + itemCount + "건";
-    }
-
-    // 포인트 사용 설정 메서드
-    public void setPointUsage(Long originalAmount, Long usedPointAmount) {
-        this.originalAmount = originalAmount;
-        this.usedPointAmount = usedPointAmount;
-        this.totalAmount = originalAmount - usedPointAmount;
-        System.out.println("totalAmount = " + totalAmount);
     }
 
 }

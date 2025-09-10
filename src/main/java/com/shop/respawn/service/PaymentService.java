@@ -3,10 +3,11 @@ package com.shop.respawn.service;
 import com.shop.respawn.domain.Buyer;
 import com.shop.respawn.domain.Order;
 import com.shop.respawn.domain.OrderStatus;
+import com.shop.respawn.domain.PointLedger;
 import com.shop.respawn.dto.Payment.PaymentDto;
-import com.shop.respawn.repository.BuyerRepository;
-import com.shop.respawn.repository.OrderRepository;
-import com.shop.respawn.repository.PaymentRepository;
+import com.shop.respawn.repository.jpa.BuyerRepository;
+import com.shop.respawn.repository.jpa.OrderRepository;
+import com.shop.respawn.repository.jpa.PaymentRepository;
 import com.siot.IamportRestClient.IamportClient;
 import com.siot.IamportRestClient.exception.IamportResponseException;
 import com.siot.IamportRestClient.request.PrepareData;
@@ -46,7 +47,7 @@ public class PaymentService {
     }
 
     // 결제 검증
-    public PaymentDto verifyPayment(String impUid, Long buyerId, Long orderId) throws IamportResponseException, IOException {
+    public PaymentDto verifyPayment(String impUid, Long buyerId, Long orderId, Long usePointAmount) throws IamportResponseException, IOException {
         IamportResponse<Payment> iamportResponse = iamportClient.paymentByImpUid(impUid);
         Long paidAmount = iamportResponse.getResponse().getAmount().longValue();
 
@@ -77,6 +78,7 @@ public class PaymentService {
                 .name(name)
                 .buyerId(buyerId)  // buyerId 추가
                 .orderId(orderId)  // orderId 추가
+                .usePointAmount(usePointAmount)
                 .paymentMethod(paymentMethod)
                 .pgProvider(pgProvider)
                 .cardName(cardName)
@@ -134,12 +136,13 @@ public class PaymentService {
                 .build();
         paymentRepository.save(payment);
 
-        if (order.getUsedPointAmount() != null && order.getUsedPointAmount() > 0) {
-            ledgerPointService.usePoints(buyer.getId(),
-                    order.getUsedPointAmount(),
+        if (paymentDto.getUsePointAmount() != null && paymentDto.getUsePointAmount() > 0) {
+            PointLedger pointLedger = ledgerPointService.usePoints(buyer.getId(),
+                    paymentDto.getUsePointAmount(),
                     order.getId(),
                     "주문 포인트 사용",
                     "user");
+            order.setPointLedger(pointLedger);
         }
 
         // 주문의 결제 상태도 업데이트

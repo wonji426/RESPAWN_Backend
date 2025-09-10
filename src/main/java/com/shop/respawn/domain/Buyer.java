@@ -17,7 +17,7 @@ import static lombok.AccessLevel.*;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor(access = PROTECTED)
-public class Buyer extends BaseTimeEntity {
+public class Buyer extends BaseTimeEntity implements User {
 
     @Id @GeneratedValue
     @Column(name = "buyer_id")
@@ -41,7 +41,7 @@ public class Buyer extends BaseTimeEntity {
     @Enumerated(STRING)
     private Role role;
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(STRING)
     private Grade grade = BASIC;
 
     @Builder.Default

@@ -1,13 +1,11 @@
 package com.shop.respawn.service;
 
 import com.shop.respawn.domain.AdminMemo;
-import com.shop.respawn.domain.Buyer;
-import com.shop.respawn.domain.Seller;
 import com.shop.respawn.dto.adminMemo.AdminMemoResponse;
 import com.shop.respawn.dto.adminMemo.AdminMemoUpsertRequest;
-import com.shop.respawn.repository.AdminMemoRepository;
-import com.shop.respawn.repository.BuyerRepository;
-import com.shop.respawn.repository.SellerRepository;
+import com.shop.respawn.repository.mongo.AdminMemoRepository;
+import com.shop.respawn.repository.jpa.BuyerRepository;
+import com.shop.respawn.repository.jpa.SellerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

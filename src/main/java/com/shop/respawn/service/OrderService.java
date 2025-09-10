@@ -5,7 +5,9 @@ import com.shop.respawn.dto.*;
 import com.shop.respawn.dto.order.*;
 import com.shop.respawn.dto.user.SellerOrderDetailDto;
 import com.shop.respawn.dto.user.SellerOrderDto;
-import com.shop.respawn.repository.*;
+import com.shop.respawn.repository.jpa.*;
+import com.shop.respawn.repository.mongo.ItemRepository;
+import com.shop.respawn.util.RedisUtil;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,11 +32,15 @@ public class OrderService {
     private final BuyerRepository buyerRepository;
     private final ItemRepository itemRepository;
     private final AddressRepository addressRepository;
-    private final ItemService itemService;
     private final OrderItemRepository orderItemRepository;
     private final PaymentRepository paymentRepository;
-    private final LedgerPointService ledgerPointService;
     private final PointLedgerRepository pointLedgerRepository;
+
+    private final LedgerPointService ledgerPointService;
+    private final ItemService itemService;
+    private final CouponService couponService;
+
+    private final RedisUtil redisUtil;
 
     /**
      * 임시 주문 상세 조회
@@ -160,9 +166,11 @@ public class OrderService {
         order.setBuyer(buyer);
         order.setOrderDate(LocalDateTime.now());
         order.setStatus(OrderStatus.TEMPORARY);
+        order.setDeliveryFee(totalDeliveryFee);
         // 필요 시 임시 주문명 부여
         order.setOrderName("임시주문 " + selectedCartItems.size() + "건");
         order.setTotalAmount(totalAmount);
+        order.setOriginalAmount(totalAmount);
 
         orderItems.forEach(order::addOrderItem);
 
@@ -227,7 +235,9 @@ public class OrderService {
         // 3. 총 결제금액 = 상품금액 + 판매자 배송비
         Long totalAmount = totalItemAmount + deliveryFee;
 
+        order.setDeliveryFee(deliveryFee);
         order.setTotalAmount(totalAmount);
+        order.setOriginalAmount(totalAmount);
 
         Order savedOrder = orderRepository.save(order);
 
@@ -237,11 +247,10 @@ public class OrderService {
     /**
      * 선택된 상품 주문 완료 처리
      */
-    public void completeSelectedOrder(Long orderId, OrderRequestDto orderRequest) {
+
+    public void completeSelectedOrder(Long buyerId, Long orderId, OrderRequestDto orderRequest) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("주문을 찾을 수 없습니다"));
-
-        Long buyerId = order.getBuyer().getId();
 
         // 1. 재고 확인
         validateStockFromOrderItems(order.getOrderItems());
@@ -253,8 +262,17 @@ public class OrderService {
             orderItem.setDelivery(delivery);
         }
 
+        String couponCode = orderRequest.getCouponCode();
+        if (couponCode != null && !couponCode.isBlank()) {
+            // 상품 총액 계산을 위해 orderItems를 넘겨 내부에서 상품총액 산출
+            computeCouponDiscount(order.getOrderItems(), couponCode);
+            Coupon coupon = couponService.getCouponByCode(couponCode)
+                    .orElseThrow(() -> new RuntimeException("쿠폰이 조회되지 않습니다."));
+            order.setCoupon(coupon);
+        }
+
         // 3. 결제 정보 설정 (총금액, 주문명, pgOrderId 등)
-        setPaymentInfoFromOrderItems(order, order.getOrderItems(), order.getUsedPointAmount());
+        setPaymentInfoFromOrderItems(order, order.getOrderItems());
 
         // 4. 재고 차감
         reduceStockFromOrderItems(order.getOrderItems());
@@ -285,9 +303,20 @@ public class OrderService {
             log.info("주문자 {}의 장바구니가 없어 아이템 제거를 건너뜁니다.", buyerId);
         }
 
+        redisUtil.deleteData("order:" + orderId + ":couponAmount");
+        redisUtil.deleteData("order:" + orderId + ":pointAmount");
+
         // 8. 최종 저장
         orderRepository.save(order);
 
+    }
+
+    private void computeCouponDiscount(List<OrderItem> orderItems, String couponCode) {
+        long totalItemAmount = orderItems.stream()
+                .mapToLong(oi -> oi.getOrderPrice() * oi.getCount())
+                .sum();
+        // 검증 및 사용 처리 -> 할인 금액 반환
+        couponService.applyCouponIfValid(couponCode, totalItemAmount);
     }
 
     /**
@@ -320,43 +349,15 @@ public class OrderService {
     /**
      * OrderItem기반 주문 정보 설정
      */
-    private void setPaymentInfoFromOrderItems(Order order, List<OrderItem> orderItems, Long usePointAmount) {
-        // 1. 상품 총 금액 계산
-        Long totalItemAmount = orderItems.stream()
-                .mapToLong(orderItem -> orderItem.getOrderPrice() * orderItem.getCount())
-                .sum();
+    private void setPaymentInfoFromOrderItems(Order order, List<OrderItem> orderItems) {
 
-        // 2. 판매자별 배송비 계산
-        Map<String, Long> sellerDeliveryFeeMap = new HashMap<>();
-        for (OrderItem orderItem : orderItems) {
-            Item item = itemRepository.findById(orderItem.getItemId())
-                    .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + orderItem.getItemId()));
-            Long deliveryFee = getDeliveryFee(item);
-            sellerDeliveryFeeMap.putIfAbsent(item.getSellerId(), deliveryFee);
-        }
-
-        Long totalDeliveryFee = sellerDeliveryFeeMap.values().stream()
-                .mapToLong(Long::longValue)
-                .sum();
-
-        // 3. 원래 총 금액 (포인트 사용 전)
-        Long originalAmount = totalItemAmount + totalDeliveryFee;
-
-        // 4. 포인트 사용 정보 설정
-        if (usePointAmount > 0) {
-            order.setPointUsage(originalAmount, usePointAmount);
-            // totalAmount는 setPointUsage에서 자동으로 계산됨 (originalAmount - usedPointAmount)
-        } else {
-            order.setTotalAmount(originalAmount);
-        }
-
-        // 5. 주문명 생성
+        // 1. 주문명 생성
         String orderName = generateOrderNameFromOrderItems(orderItems);
 
-        // 6. PG 주문번호 생성
+        // 2. PG 주문번호 생성
         String pgOrderId = "ORDER_" + order.getId() + "_" + System.currentTimeMillis();
 
-        // 7. 주문 엔티티에 값 설정
+        // 3. 주문 엔티티에 값 설정
         order.setPgOrderId(pgOrderId);
         order.setOrderName(orderName);
     }
@@ -473,6 +474,7 @@ public class OrderService {
      * 주문 내역 조회 메서드
      */
     public OrderHistoryDto getLatestOrderByBuyerId(Long buyerId) {
+
         Order order = orderRepository.findTop1ByBuyer_IdAndStatusOrderByOrderDateDesc(buyerId, OrderStatus.PAID);
 
         if (order == null) {  // 주문 없으면 null임
@@ -487,6 +489,42 @@ public class OrderService {
                 }).toList();
 
         return new OrderHistoryDto(order, itemDtos);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderHistoryDto> getRecentMonthOrders(Long buyerId) {
+
+        LocalDateTime to = LocalDateTime.now();
+        LocalDateTime from = to.minusMonths(1);
+
+        // 1) 한달 내 주문 헤더 Top-N (예: 100건 상한)
+        List<Order> orders = orderRepository.findRecentPaidOrdersByBuyer(buyerId, from, to, 100);
+
+        if (orders.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2) 주문아이디 목록으로 OrderItem 일괄 로딩 (배치 조회)
+        List<Long> orderIds = orders.stream().map(Order::getId).toList();
+
+        // OrderItem을 주문별로 묶기 위한 맵
+        Map<Long, List<OrderItem>> itemsByOrderId = orderItemRepository.findAllByOrder_IdIn(orderIds)
+                .stream()
+                .collect(Collectors.groupingBy(oi -> oi.getOrder().getId()));
+
+        // 3) DTO 변환: Mongo Item은 서비스 통해 조회
+        return orders.stream()
+                .map(o -> {
+                    List<OrderItem> orderItems = itemsByOrderId.getOrDefault(o.getId(), List.of());
+                    List<OrderHistoryItemDto> itemDtos = orderItems.stream()
+                            .map(oi -> {
+                                Item item = itemService.getItemById(oi.getItemId());
+                                return OrderHistoryItemDto.from(oi, item);
+                            })
+                            .toList();
+                    return new OrderHistoryDto(o, itemDtos);
+                })
+                .toList();
     }
 
     /**
@@ -514,6 +552,8 @@ public class OrderService {
         Order order = getOrderById(orderId);
         order.validateOwner(buyerId);   //주문 권한 체크
 
+        Coupon coupon = order.getCoupon();
+
         Payment payment = paymentRepository.findByOrder(order).orElse(null);
 
         // 상품 DTO 변환
@@ -532,7 +572,7 @@ public class OrderService {
         ).orElse(null);
 
         // 최종 DTO 생성
-        return OrderCompleteInfoDto.from(order, itemDtos, deliveryDtos, payment, savedLedger);
+        return OrderCompleteInfoDto.from(order, itemDtos, deliveryDtos, coupon, payment, savedLedger);
     }
 
     /**
@@ -541,6 +581,11 @@ public class OrderService {
     public long deleteAllTemporaryOrders(Long buyerId) {
         // 해당 구매자의 TEMPORARY 상태인 모든 주문 조회
         List<Order> temporaryOrders = orderRepository.findByBuyerIdAndStatus(buyerId, OrderStatus.TEMPORARY);
+
+        for (Order temporaryOrder : temporaryOrders) {
+            redisUtil.deleteData("order:" + temporaryOrder.getId() + ":couponAmount");
+            redisUtil.deleteData("order:" + temporaryOrder.getId() + ":pointAmount");
+        }
 
         if (temporaryOrders.isEmpty()) {
             log.info("삭제할 임시 주문이 없습니다. buyerId: {}", buyerId);
@@ -732,7 +777,7 @@ public class OrderService {
     /**
      * 판매자 환불 요청 완료
      */
-    public void completeRefund(Long orderItemId, Long sellerId) {
+    public String completeRefund(Long orderItemId, Long sellerId) {
         // 주문 아이템 조회
         OrderItem orderItem = orderItemRepository.findById(orderItemId)
                 .orElseThrow(() -> new RuntimeException("주문 아이템을 찾을 수 없습니다: " + orderItemId));
@@ -757,6 +802,16 @@ public class OrderService {
         itemRepository.save(item);
 
         // (필요시) 주문 상태 또는 결제 상태 업데이트 등 추가 처리 가능
+        long price = orderItem.getOrderPrice() * orderItem.getCount();
+        long usePointAmount = -(orderItem.getOrder().getPointLedger().getAmount());
+        if (price >= usePointAmount) {
+            Long buyerId = orderItem.getOrder().getBuyer().getId();
+            Long pointLedgerId = orderItem.getOrder().getPointLedger().getId();
+            ledgerPointService.cancelUse(buyerId, pointLedgerId, "환불에 의한 포인트 사용 취소", "System");
+        } else {
+            return "사용 포인트 보다 작은 금액의 상품을 환불 할 경우 포인트는 반환되지 않습니다.";
+        }
+        return "환불이 완료 되었습니다.";
     }
 
     /**
@@ -877,5 +932,35 @@ public class OrderService {
             log.info("{}숫자 변환 실패 시 배송비 0 처리", deliveryFee); // 숫자 변환 실패 시 배송비 0 처리
         }
         return deliveryFee;
+    }
+
+    public String applyPoints(Long buyerId, Long orderId, Long usePointAmount) {
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("주문을 찾을 수 없습니다."));
+
+        if (!order.getBuyer().getId().equals(buyerId)) {
+            throw new RuntimeException("권한이 없습니다.");
+        }
+
+        long activePoints = ledgerPointService.getActive(buyerId);
+        if (usePointAmount > activePoints) {
+            throw new RuntimeException("사용가능 포인트 부족");
+        }
+
+        String redisKey = "order:" + orderId + ":pointAmount";
+
+        if (redisUtil.getData(redisKey) != null) {
+            String data = redisUtil.getData(redisKey);
+            order.setTotalAmount(order.getTotalAmount() + Long.parseLong(data));
+        }
+
+        order.setTotalAmount(order.getTotalAmount() - usePointAmount);
+        redisUtil.setData(redisKey, String.valueOf(usePointAmount));
+//        order.setUsedPointAmount(usePointAmount);
+
+        orderRepository.save(order);
+
+        return "포인트 " + usePointAmount + "원이 적용되었습니다.";
     }
 }

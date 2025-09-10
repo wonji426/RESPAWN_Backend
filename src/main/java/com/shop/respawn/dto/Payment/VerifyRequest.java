@@ -10,5 +10,6 @@ public class VerifyRequest {
     private String merchantUid;
     private Long orderId;
     private Long selectedAddressId;
+    private Long usePointAmount;
     private List<Long> selectedCartItemIds;
 }

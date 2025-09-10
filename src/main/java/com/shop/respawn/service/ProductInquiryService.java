@@ -7,8 +7,8 @@ import com.shop.respawn.domain.ProductInquiry;
 import com.shop.respawn.dto.productInquiry.ProductInquiryRequestDto;
 import com.shop.respawn.dto.productInquiry.ProductInquiryResponseDto;
 import com.shop.respawn.dto.productInquiry.ProductInquiryResponseTitlesDto;
-import com.shop.respawn.repository.BuyerRepository;
-import com.shop.respawn.repository.ProductInquiryRepository;
+import com.shop.respawn.repository.jpa.BuyerRepository;
+import com.shop.respawn.repository.mongo.ProductInquiryRepository;
 import com.shop.respawn.util.MaskingUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -99,10 +99,10 @@ public class ProductInquiryService {
     }
 
     // 상품 문의 등록
-    public ProductInquiryResponseDto createInquiry(Long buyerId, ProductInquiryRequestDto dto) {
+    public ProductInquiryResponseDto createInquiry(String buyerId, ProductInquiryRequestDto dto) {
 
         ProductInquiry inquiry = new ProductInquiry();
-        inquiry.setBuyerId(String.valueOf(buyerId));
+        inquiry.setBuyerId(buyerId);
         inquiry.setItemId(dto.getItemId());
         inquiry.setInquiryType(dto.getInquiryType());
         inquiry.setQuestion(dto.getQuestion());

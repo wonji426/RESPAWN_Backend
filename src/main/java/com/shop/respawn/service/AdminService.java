@@ -5,8 +5,8 @@ import com.shop.respawn.domain.Seller;
 import com.shop.respawn.dto.user.BuyerListDto;
 import com.shop.respawn.dto.user.SellerListDto;
 import com.shop.respawn.dto.user.UserSummaryDto;
-import com.shop.respawn.repository.BuyerRepository;
-import com.shop.respawn.repository.SellerRepository;
+import com.shop.respawn.repository.jpa.BuyerRepository;
+import com.shop.respawn.repository.jpa.SellerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -288,10 +288,9 @@ public class AdminService {
     }
 
     private String sortOrDefault(String sort) {
-        // 지원 정렬 필드 화이트리스트: username, name, id
         if (sort == null || sort.isBlank()) return "username";
         return switch (sort.toLowerCase()) {
-            case "username", "name", "id" -> sort;
+            case "username", "name", "id", "phonenumber", "email", "createdat", "grade", "company" -> sort;
             default -> "username";
         };
     }

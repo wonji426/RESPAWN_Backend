@@ -3,21 +3,22 @@ package com.shop.respawn.controller;
 import com.shop.respawn.domain.Cart;
 import com.shop.respawn.domain.Item;
 import com.shop.respawn.dto.CartItemDto;
+import com.shop.respawn.dto.CartItemIdsRequest;
 import com.shop.respawn.dto.QuantityChangeRequest;
 import com.shop.respawn.service.CartService;
 import com.shop.respawn.service.ItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.shop.respawn.util.SessionUtil.getBuyerIdFromSession;
+import static com.shop.respawn.util.AuthenticationUtil.getUserIdFromAuthentication;
 
 @RestController
 @RequiredArgsConstructor
@@ -32,13 +33,10 @@ public class CartController {
      */
     @PostMapping("/add")
     public ResponseEntity<String> addToCart(
-            @RequestBody CartItemDto cartItemDto,
-            HttpSession session) {
-
-        System.out.println("cartItemDto = " + cartItemDto);
-        Long buyerId = getBuyerIdFromSession(session);
-        System.out.println("buyerId = " + buyerId);
-
+            Authentication authentication,
+            @RequestBody CartItemDto cartItemDto
+    ) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
         try {
             cartService.addItemToCart(buyerId, cartItemDto.getItemId(), cartItemDto.getCount());
             return ResponseEntity.ok("장바구니에 상품이 추가되었습니다.");
@@ -51,8 +49,8 @@ public class CartController {
      * 장바구니 조회
      */
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getCart(HttpSession session) {
-        Long buyerId = getBuyerIdFromSession(session);
+    public ResponseEntity<Map<String, Object>> getCart(Authentication authentication) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
 
         Cart cart = cartService.getCartByBuyerId(buyerId);
         if (cart == null) {
@@ -93,12 +91,12 @@ public class CartController {
 
     @PostMapping("/items/{cartItemId}/increase")
     public ResponseEntity<String> increaseCartItemQuantity(
+            Authentication authentication,
             @PathVariable Long cartItemId,
-            @RequestBody @Valid QuantityChangeRequest request,
-            HttpSession session) {
+            @RequestBody @Valid QuantityChangeRequest request) {
 
         try {
-            Long buyerId = getBuyerIdFromSession(session);
+            Long buyerId = getUserIdFromAuthentication(authentication);
             cartService.increaseCartItemQuantity(buyerId, cartItemId, request.getAmount());
             return ResponseEntity.ok("장바구니 아이템 수량이 증가되었습니다.");
         } catch (IllegalArgumentException e) {
@@ -112,12 +110,13 @@ public class CartController {
 
     @PostMapping("/items/{cartItemId}/decrease")
     public ResponseEntity<String> decreaseCartItemQuantity(
+            Authentication authentication,
             @PathVariable Long cartItemId,
-            @RequestBody @Valid QuantityChangeRequest request,
-            HttpSession session) {
+            @RequestBody @Valid QuantityChangeRequest request
+    ) {
 
         try {
-            Long buyerId = getBuyerIdFromSession(session);
+            Long buyerId = getUserIdFromAuthentication(authentication);
             cartService.decreaseCartItemQuantity(buyerId, cartItemId, request.getAmount());
             return ResponseEntity.ok("장바구니 아이템 수량이 감소되었습니다.");
         } catch (IllegalArgumentException e) {
@@ -130,21 +129,35 @@ public class CartController {
     }
 
     /**
-     * 장바구니에서 상품 제거
+     * 장바구니에서 선택 상품 제거
      */
-    @DeleteMapping("/items/{cartItemId}")
+    @DeleteMapping("/items/delete")
     public ResponseEntity<String> removeFromCart(
-            @PathVariable Long cartItemId,
-            HttpSession session) {
+            Authentication authentication,
+            @RequestBody CartItemIdsRequest request
+    ) {
 
-        Long buyerId = getBuyerIdFromSession(session);
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        List<Long> ids = request.getCartItemIds();
 
         try {
-            cartService.removeCartItem(buyerId, cartItemId);
+            cartService.removeCartItem(buyerId, ids);
             return ResponseEntity.ok("상품이 장바구니에서 제거되었습니다.");
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
+    /**
+     * 장바구니에서 상품 제거
+     */
+    @DeleteMapping
+    public ResponseEntity<String> clearCart(Authentication authentication) {
+
+        Long buyerId = getUserIdFromAuthentication(authentication);
+
+        cartService.clearCart(buyerId);
+
+        return ResponseEntity.ok("장바구니를 모두 비웠습니다.");
+    }
 }

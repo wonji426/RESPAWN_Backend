@@ -1,12 +1,24 @@
 package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
-import com.shop.respawn.repository.*;
+import com.shop.respawn.dto.point.ExpiringPointItemDto;
+import com.shop.respawn.dto.point.PointHistoryDto;
+import com.shop.respawn.dto.point.PointLedgerDto;
+import com.shop.respawn.repository.jpa.BuyerRepository;
+import com.shop.respawn.repository.jpa.PointBalanceRepository;
+import com.shop.respawn.repository.jpa.PointConsumeLinkRepository;
+import com.shop.respawn.repository.jpa.PointLedgerRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -17,6 +29,7 @@ public class LedgerPointService {
     private final PointLedgerRepository ledgerRepository;
     private final PointConsumeLinkRepository linkRepository;
     private final PointBalanceRepository balanceRepository;
+    private final PointQueryService pointQueryService;
 
     // 내부 유틸: Balance 조회 또는 생성
     private PointBalance getOrCreateBalance(Long buyerId) {
@@ -43,7 +56,7 @@ public class LedgerPointService {
 
     // FIFO 사용
     @Transactional
-    public void usePoints(Long buyerId, long useAmount, Long refOrderId, String reason, String actor) {
+    public PointLedger usePoints(Long buyerId, long useAmount, Long refOrderId, String reason, String actor) {
         if (useAmount <= 0) throw new IllegalArgumentException("사용 금액은 0보다 커야 합니다.");
         PointBalance bal = getOrCreateBalance(buyerId);
         if (bal.getActive() < useAmount) {
@@ -81,6 +94,7 @@ public class LedgerPointService {
         bal.addActive(-useAmount);
         bal.addUsed(useAmount);
         balanceRepository.save(bal);
+        return use;
     }
 
     // 사용 취소
@@ -88,6 +102,9 @@ public class LedgerPointService {
     public void cancelUse(Long buyerId, Long useLedgerId, String reason, String actor) {
         PointLedger use = ledgerRepository.findById(useLedgerId)
                 .orElseThrow(() -> new RuntimeException("USE 레코드를 찾을 수 없습니다."));
+        if (!use.getBuyer().getId().equals(buyerId)) {
+            throw new IllegalArgumentException("지급자 ID 불일치");
+        }
         if (use.getType() != PointTransactionType.USE) {
             throw new IllegalArgumentException("USE 레코드가 아닙니다.");
         }
@@ -102,9 +119,9 @@ public class LedgerPointService {
         // 링크 되돌리기(최근 링크부터 되돌리는 정책 가능. 여기선 단순 전체 되돌림)
         List<PointConsumeLink> links = linkRepository.findByUseLedger(use);
         for (PointConsumeLink link : links) {
-            // 소비를 되돌릴 땐 별도 링크가 필요한가?
-            // 감사 추적용으로 CANCEL_USE도 SAVE와의 링크를 남길 수 있지만, 단순화해 생략 가능.
-            // 필요 시: linkRepository.save(PointConsumeLink.of(link.getSaveLedger(), cancelUse, link.getConsumedAmount()));
+            // 기존 USE → SAVE 링크를 기반으로 CANCEL_USE → SAVE 링크를 생성해 저장
+            PointConsumeLink cancelLink = PointConsumeLink.of(link.getSaveLedger(), cancelUse, link.getConsumedAmount());
+            linkRepository.save(cancelLink);
         }
         // 집계 되돌림
         PointBalance bal = getOrCreateBalance(buyer.getId());
@@ -179,6 +196,64 @@ public class LedgerPointService {
         return linkRepository.findBySaveLedger(save).stream()
                 .mapToLong(PointConsumeLink::getConsumedAmount)
                 .sum();
+    }
+
+    public Page<PointLedgerDto> getSaves(Long buyerId, int page, int size, String sort, Integer year, Integer month) {
+        Sort sortObj = toSort(sort);
+        Pageable pageable = PageRequest.of(page, size, sortObj);
+
+        if (year != null && month != null) {
+            LocalDateTime[] range = toMonthRange(year, month);
+            return pointQueryService.getSavesByMonth(buyerId, range[0], range[1], pageable);
+        }
+        return pointQueryService.getSaves(buyerId, pageable);
+    }
+
+    public Page<PointLedgerDto> getUses(Long buyerId, int page, int size, String sort, Integer year, Integer month) {
+        Sort sortObj = toSort(sort);
+        Pageable pageable = PageRequest.of(page, size, sortObj);
+
+        if (year != null && month != null) {
+            LocalDateTime[] range = toMonthRange(year, month);
+            return pointQueryService.getUsesByMonth(buyerId, range[0], range[1], pageable);
+        }
+        return pointQueryService.getUses(buyerId, pageable);
+    }
+
+    public Page<PointHistoryDto> getAll(Long buyerId, int page, int size, String sort, Integer year, Integer month) {
+        Sort sortObj = toSort(sort);
+        Pageable pageable = PageRequest.of(page, size, sortObj);
+
+        if (year != null && month != null) {
+            LocalDateTime[] range = toMonthRange(year, month);
+            return pointQueryService.getAllByMonth(buyerId, range[0], range[1], pageable);
+        }
+        return pointQueryService.getAll(buyerId, pageable);
+    }
+
+    public List<ExpiringPointItemDto> getMonthlyExpiringList(Long buyerId, int year, int month) {
+        LocalDateTime[] range = toMonthRange(year, month);
+        return pointQueryService.getMonthlyExpiringList(buyerId, range[0], range[1]);
+    }
+
+    // 유틸: "occurredAt,desc" → Sort
+    private Sort toSort(String sortParam) {
+        // "occurredAt,desc" 또는 "amount,asc" 형태를 1개 받아 처리
+        if (sortParam == null || sortParam.isBlank()) {
+            return Sort.by(Sort.Order.desc("occurredAt")).and(Sort.by(Sort.Order.desc("id")));
+        }
+        String[] parts = sortParam.split(",");
+        String prop = parts[0];
+        String dir = (parts.length > 1) ? parts[1] : "desc";
+        Sort.Order order = "asc".equalsIgnoreCase(dir) ? Sort.Order.asc(prop) : Sort.Order.desc(prop);
+        // 기본 tie-break
+        return Sort.by(order).and(Sort.by(Sort.Order.desc("id")));
+    }
+
+    private static LocalDateTime[] toMonthRange(int year, int month) {
+        LocalDate first = LocalDate.of(year, month, 1);
+        LocalDate last = first.withDayOfMonth(first.lengthOfMonth());
+        return new LocalDateTime[]{ first.atStartOfDay(), last.atTime(LocalTime.MAX) };
     }
 
     @Transactional(readOnly = true)

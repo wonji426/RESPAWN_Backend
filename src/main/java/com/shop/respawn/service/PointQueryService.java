@@ -6,7 +6,7 @@ import com.shop.respawn.dto.point.ExpiringPointItemDto;
 import com.shop.respawn.dto.point.ExpiringPointTotalDto;
 import com.shop.respawn.dto.point.PointHistoryDto;
 import com.shop.respawn.dto.point.PointLedgerDto;
-import com.shop.respawn.repository.PointLedgerRepository;
+import com.shop.respawn.repository.jpa.PointLedgerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;

@@ -2,17 +2,14 @@ package com.shop.respawn.controller;
 
 import com.shop.respawn.dto.AddressDto;
 import com.shop.respawn.service.AddressService;
-import com.shop.respawn.util.SessionUtil;
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import static com.shop.respawn.util.SessionUtil.getBuyerIdFromSession;
+import static com.shop.respawn.util.AuthenticationUtil.getUserIdFromAuthentication;
 
 @RestController
 @RequestMapping("/api/addresses")
@@ -26,8 +23,10 @@ public class AddressController {
      */
     @PostMapping("/add")
     public ResponseEntity<?> createAddress(
-            @RequestBody AddressDto addressDto, HttpSession session) {
-        Long buyerId = getBuyerIdFromSession(session);
+            Authentication authentication,
+            @RequestBody AddressDto addressDto
+    ) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
         AddressDto savedAddress = addressService.createAddress(buyerId, addressDto);
         return ResponseEntity.ok(savedAddress);
     }
@@ -36,8 +35,8 @@ public class AddressController {
      * 로그인한 사용자의 모든 주소 조회 (기본 주소 우선, 최신 순)
      */
     @GetMapping
-    public ResponseEntity<List<AddressDto>> getMyAddresses(HttpSession session) {
-        Long buyerId = getBuyerIdFromSession(session);
+    public ResponseEntity<List<AddressDto>> getMyAddresses(Authentication authentication) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
         List<AddressDto> addresses = addressService.getAddressesByBuyer(buyerId);
         return ResponseEntity.ok(addresses);
     }
@@ -46,9 +45,9 @@ public class AddressController {
      * 로그인한 사용자의 기본 주소 조회
      */
     @GetMapping("/basic")
-    public ResponseEntity<AddressDto> getMyBasicAddress(HttpSession session) {
+    public ResponseEntity<AddressDto> getMyBasicAddress(Authentication authentication) {
         try {
-            Long buyerId = getBuyerIdFromSession(session);
+            Long buyerId = getUserIdFromAuthentication(authentication);
             AddressDto basicAddress = addressService.getBasicAddress(buyerId);
             return ResponseEntity.ok(basicAddress);
         } catch (IllegalStateException e) {
@@ -62,10 +61,11 @@ public class AddressController {
      */
     @PutMapping("/{addressId}")
     public ResponseEntity<AddressDto> updateAddress(
+            Authentication authentication,
             @PathVariable Long addressId,
-            @RequestBody AddressDto addressDto,
-            HttpSession session) {
-        Long buyerId = getBuyerIdFromSession(session);
+            @RequestBody AddressDto addressDto
+    ) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
         AddressDto updatedAddress = addressService.updateAddress(buyerId, addressId, addressDto);
         return ResponseEntity.ok(updatedAddress);
     }
@@ -75,9 +75,11 @@ public class AddressController {
      */
     @DeleteMapping("/{addressId}")
     public ResponseEntity<String> deleteAddress(
-            @PathVariable Long addressId, HttpSession session) {
+            Authentication authentication,
+            @PathVariable Long addressId
+    ) {
         try {
-            Long buyerId = getBuyerIdFromSession(session);
+            Long buyerId = getUserIdFromAuthentication(authentication);
             addressService.deleteAddress(buyerId, addressId);
             return ResponseEntity.ok("주소 삭제 성공");
         } catch (IllegalArgumentException e) {

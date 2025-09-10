@@ -1,20 +1,17 @@
 package com.shop.respawn.controller;
 
-import com.shop.respawn.dto.ReviewRequestDto;
-import com.shop.respawn.dto.ReviewWithItemDto;
-import com.shop.respawn.dto.WritableReviewDto;
+import com.shop.respawn.dto.*;
 import com.shop.respawn.service.ReviewService;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.*;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import static com.shop.respawn.util.SessionUtil.getSellerIdFromSession;
+import static com.shop.respawn.util.AuthenticationUtil.*;
 
 @RestController
 @RequestMapping("/api/reviews")
@@ -28,9 +25,10 @@ public class ReviewController {
      */
     @GetMapping("/order-items/{orderItemId}")
     public ResponseEntity<?> checkReviewExists(
-            @PathVariable String orderItemId,
-            HttpSession session) {
-        Long buyerId = (Long) session.getAttribute("userId");
+            Authentication authentication,
+            @PathVariable String orderItemId
+            ) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
         if (buyerId == null) {
             return ResponseEntity.status(401).body("로그인이 필요합니다.");
         }
@@ -46,11 +44,12 @@ public class ReviewController {
      */
     @PostMapping("/order-items/{orderItemId}")
     public ResponseEntity<?> createReview(
+            Authentication authentication,
             @PathVariable String orderItemId,    // MongoDB의 ID형이 String이므로 String으로 바꿈
-            @RequestBody @Valid ReviewRequestDto reviewRequestDto,
-            HttpSession session) {
+            @RequestBody @Valid ReviewRequestDto reviewRequestDto
+    ) {
         try {
-            Long buyerId = (Long) session.getAttribute("userId");
+            Long buyerId = getUserIdFromAuthentication(authentication);
             if (buyerId == null) {
                 return ResponseEntity.status(401).body("로그인이 필요합니다.");
             }
@@ -62,40 +61,22 @@ public class ReviewController {
         }
     }
 
-    /**
-     * 자신이 작성한 리뷰 조회 및 리뷰 작성 가능 여부
-     */
-    @GetMapping("/my")
-    public ResponseEntity<?> getMyReviews(HttpSession session) {
-        Long buyerId = (Long) session.getAttribute("userId");
-        if (buyerId == null) {
-            return ResponseEntity.status(401).body("로그인이 필요합니다.");
-        }
-
-        List<WritableReviewDto> writableItems = reviewService.getWritableReviews(buyerId);
-        List<ReviewWithItemDto> writtenReviews = reviewService.getWrittenReviews(buyerId);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("writableItems", writableItems);
-        response.put("writtenReviews", writtenReviews);
-
-        return ResponseEntity.ok(response);
-    }
 
     /**
      * 판매자가 자신이 판매한 아이템에 대한 리뷰 보기
      */
     @GetMapping("/seller/my-reviews")
     public ResponseEntity<List<ReviewWithItemDto>> getMyItemReviews(
-            HttpSession session,
-            @RequestParam(required = false) String itemId) {
+            Authentication authentication,
+            @RequestParam(required = false) String itemId
+    ) {
         try {
-            String sellerId = getSellerIdFromSession(session).toString();
+            Long sellerId = getUserIdFromAuthentication(authentication);
             List<ReviewWithItemDto> reviews;
             if (itemId != null && !itemId.isEmpty()) {
-                reviews = reviewService.getReviewsBySellerIdAndItemId(sellerId, itemId);
+                reviews = reviewService.getReviewsBySellerIdAndItemId(String.valueOf(sellerId), itemId);
             } else {
-                reviews = reviewService.getReviewsBySellerId(sellerId);
+                reviews = reviewService.getReviewsBySellerId(String.valueOf(sellerId));
             }
             return ResponseEntity.ok(reviews);
         } catch (Exception e) {
@@ -107,8 +88,47 @@ public class ReviewController {
     @GetMapping("/items/{itemId}")
     public ResponseEntity<List<ReviewWithItemDto>> getReviewsByItemId(@PathVariable String itemId) {
         // 서비스에 위임
-        List<ReviewWithItemDto> reviews = reviewService.getReviewsByItemId(itemId);
-        return ResponseEntity.ok(reviews);
+        return ResponseEntity.ok(reviewService.getReviewsByItemId(itemId));
+    }
+
+    // [1] 본인 작성 리뷰 목록 페이징 조회
+    /**
+     * 구매자 본인 작성 리뷰 페이징 조회
+     * /api/my-reviews/written?page=0&size=10
+     */
+    @GetMapping("/written")
+    public ResponseEntity<Page<ReviewWithItemDto>> getWrittenReviews(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        return ResponseEntity.ok(reviewService.getReviewsByBuyerId(String.valueOf(buyerId), pageable));
+    }
+
+    // [2] 본인 작성 가능 리뷰 목록(배송완료+미작성) 페이징 조회
+    @GetMapping("/writable")
+    public ResponseEntity<Page<OrderItemDto>> getWritableReviews(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        Page<OrderItemDto> result = reviewService.getWritableReviews(String.valueOf(buyerId), pageable);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 본인이 작성한 리뷰 개수 조회
+     */
+    @GetMapping("/count")
+    public ResponseEntity<CountReviewDto> getReviewCount(Authentication authentication) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        CountReviewDto count = reviewService.countReviews(String.valueOf(buyerId));
+        return ResponseEntity.ok(count);
     }
 
 }

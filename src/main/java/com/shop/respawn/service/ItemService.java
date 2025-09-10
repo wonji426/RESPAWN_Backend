@@ -2,10 +2,13 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.ItemDto;
-import com.shop.respawn.repository.ItemRepository;
-import com.shop.respawn.repository.OrderItemRepository;
-import com.shop.respawn.repository.SellerRepository;
+import com.shop.respawn.dto.OffsetPage;
+import com.shop.respawn.dto.ItemCategoryDto;
+import com.shop.respawn.repository.mongo.ItemRepository;
+import com.shop.respawn.repository.jpa.OrderItemRepository;
+import com.shop.respawn.repository.jpa.SellerRepository;
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +42,7 @@ public class ItemService {
             newItem.setStockQuantity(itemDto.getStockQuantity());
             newItem.setSellerId(String.valueOf(sellerId));
             newItem.setImageUrl(itemDto.getImageUrl()); // 대표 사진 경로만 저장
-            newItem.setCategoryIds(itemDto.getCategoryIds());
+            newItem.setCategory(itemDto.getCategory());
             newItem.setDescription(itemDto.getDescription());
             if (newItem.getStatus() == null && ItemStatus.class.isEnum()) {
                 newItem.setStatus(ItemStatus.SALE);
@@ -51,12 +54,12 @@ public class ItemService {
         }
     }
 
-    public Item updateItem(String itemId, ItemDto itemDto, Long sellerId) {
+    public Item updateItem(String itemId, ItemDto itemDto, String sellerId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + itemId));
 
         // 본인 상품인지 확인
-        if (!item.getSellerId().equals(String.valueOf(sellerId))) {
+        if (!item.getSellerId().equals(sellerId)) {
             throw new RuntimeException("본인이 등록한 상품만 수정할 수 있습니다.");
         }
 
@@ -69,7 +72,7 @@ public class ItemService {
         item.setCompanyNumber(itemDto.getCompanyNumber());
         item.setPrice(itemDto.getPrice());
         item.setStockQuantity(itemDto.getStockQuantity());
-        item.setCategoryIds(itemDto.getCategoryIds());
+        item.setCategory(itemDto.getCategory());
 
         // 이미지 URL은 별도의 로직으로 처리하거나 그대로 유지
         if (itemDto.getImageUrl() != null && !itemDto.getImageUrl().isEmpty()) {
@@ -84,8 +87,15 @@ public class ItemService {
                 .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + id));
     }
 
-    public List<Item> getAllItems() {
-        return itemRepository.findAll();
+    @NotNull
+    public ItemCategoryDto getItemByCategory(String category, int offset, int limit) {
+        OffsetPage<Item> result = itemRepository.findItemsByOffsetUsingName(category, offset, limit);
+
+        List<ItemDto> itemDtos = result.items().stream()
+                .map(item -> new ItemDto(item.getId(), item.getName(), item.getDescription(), item.getDeliveryType(), item.getDeliveryFee(), item.getCompany(),
+                        item.getCompanyNumber(), item.getPrice(), item.getStockQuantity(), item.getSellerId(), item.getImageUrl(), item.getCategory()))
+                .toList();
+        return new ItemCategoryDto(result, itemDtos);
     }
 
     public List<Item> getItemsBySellerId(String sellerId) {
@@ -105,22 +115,22 @@ public class ItemService {
     /**
      * 상품의 판매상태 조작 메서드
      */
-    public void changeItemStatus(String itemId, Long sellerId, ItemStatus status) {
+    public void changeItemStatus(String itemId, String sellerId, ItemStatus status) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다."));
-        if (!item.getSellerId().equals(String.valueOf(sellerId))) {
+        if (!item.getSellerId().equals(sellerId)) {
             throw new RuntimeException("본인이 등록한 상품만 상태를 변경할 수 있습니다.");
         }
         item.setStatus(status);
         itemRepository.save(item);
     }
 
-    public void deleteItemIfNoPendingDelivery(String itemId, Long sellerId) {
+    public void deleteItemIfNoPendingDelivery(String itemId, String sellerId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + itemId));
 
         // 판매자 본인 상품인지 확인
-        if (!item.getSellerId().equals(String.valueOf(sellerId))) {
+        if (!item.getSellerId().equals(sellerId)) {
             throw new RuntimeException("본인이 등록한 상품만 삭제할 수 있습니다.");
         }
 
@@ -163,6 +173,7 @@ public class ItemService {
         if (categoryIds == null || categoryIds.isEmpty()) {
             return searchItems(keyword);
         }
+        // repository에서 ObjectId 변환 및 IN 처리
         return itemRepository.searchByKeywordAndCategories(
                 keyword == null ? "" : keyword.trim(),
                 categoryIds

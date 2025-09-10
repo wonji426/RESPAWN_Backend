@@ -63,6 +63,17 @@ public class PrincipalDetails implements UserDetails, OAuth2User {
         return null;
     }
 
+    public Long getUserId() {
+        if (buyer != null) {
+            return buyer.getId();
+        } else if (seller != null) {
+            return seller.getId();
+        } else if (admin != null) {
+            return admin.getId();
+        }
+        return null;
+    }
+
     @Override
     public String getUsername() {
         if (buyer != null) {
@@ -77,6 +88,13 @@ public class PrincipalDetails implements UserDetails, OAuth2User {
 
     @Override
     public String getName() {
+        if (buyer != null) {
+            return buyer.getName();
+        } else if (seller != null) {
+            return seller.getName();
+        } else if (admin != null) {
+            return admin.getName();
+        }
         return null;
     }
 

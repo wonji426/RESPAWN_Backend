@@ -2,10 +2,8 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.AddressDto;
-import com.shop.respawn.repository.AdminRepository;
-import com.shop.respawn.repository.BuyerRepository;
-import com.shop.respawn.repository.OrderItemRepository;
-import com.shop.respawn.repository.SellerRepository;
+import com.shop.respawn.dto.NoticeDto;
+import com.shop.respawn.repository.jpa.*;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,7 +22,10 @@ public class MyService {
     private final AdminRepository adminRepository;
     private final AddressService addressService;
     private final OrderItemRepository orderItemRepository;
+    private final CouponRepository couponRepository;
     private final BCryptPasswordEncoder encoder;
+    private final LedgerPointService ledgerPointService;
+    private final NoticeService noticeService;
 
     private final EntityManager em;
 
@@ -67,6 +68,20 @@ public class MyService {
 
         addressService.createAddress(1L, addressDto1);
         addressService.createAddress(1L, addressDto2);
+
+        Coupon coupon1 = Coupon.createCoupon(buyer, "신규 가입 축하 쿠폰(10,000원)", 10_000L, LocalDateTime.now().plusDays(30));
+        Coupon coupon2 = Coupon.createCoupon(buyer, "신규 가입 축하 쿠폰(5,000원)", 5_000L, LocalDateTime.now().plusDays(30));
+        couponRepository.save(coupon1);
+        couponRepository.save(coupon2);
+        em.persist(coupon1);
+        em.persist(coupon2);
+
+        ledgerPointService.savePoints(buyer.getId(),
+                20000L,
+                LocalDateTime.now().plusYears(1),
+                1L,
+                "결제 포인트 적립",
+                "system");
 
         // 주문 데이터 생성 예시
         Item item1 = new Item();
@@ -120,6 +135,18 @@ public class MyService {
 
             findOrderItem.getDelivery().setStatus(DeliveryStatus.DELIVERED);
         }
+        NoticeDto noticeDto = new NoticeDto("소셜로그인에 관한 공지사항(1)","소셜로그인은 전화번호 추가가 필요합니다.",NoticeType.ACCOUNT);
+        noticeService.CreateNotice(admin.getId(), noticeDto);
+        NoticeDto noticeDto1 = new NoticeDto("정기점검에 관한 공지사항","정기점검을 실시할 예정입니다..",NoticeType.OPERATIONS);
+        noticeService.CreateNotice(admin.getId(), noticeDto1);
+        NoticeDto noticeDto2 = new NoticeDto("주문에 관한 공지사항","주문 후 주문완료 페이지를 확인해주세요.",NoticeType.ORDER);
+        noticeService.CreateNotice(admin.getId(), noticeDto2);
+        NoticeDto noticeDto3 = new NoticeDto("배송에 관한 공지사항","배송이 지연될 수 있습니다.",NoticeType.SHIPPING);
+        noticeService.CreateNotice(admin.getId(), noticeDto3);
+        NoticeDto noticeDto4 = new NoticeDto("소셜로그인에 관한 공지사항(2)","소셜로그인은 이름 추가가 필요합니다.",NoticeType.ACCOUNT);
+        noticeService.CreateNotice(admin.getId(), noticeDto4);
+        NoticeDto noticeDto5 = new NoticeDto("소셜로그인에 관한 공지사항(3)","소셜로그인은 정보 추가가 필요할 수 있습니다.",NoticeType.ACCOUNT);
+        noticeService.CreateNotice(admin.getId(), noticeDto5);
     }
 
 }

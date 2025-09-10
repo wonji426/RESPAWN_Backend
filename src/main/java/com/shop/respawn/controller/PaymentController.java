@@ -60,7 +60,7 @@ public class PaymentController {
             // Order를 통해 buyerId 조회
             Long buyerId = getBuyerIdFromOrder(request.getOrderId());
 
-            PaymentDto result = paymentService.verifyPayment(request.getImpUid(), buyerId, request.getOrderId());
+            PaymentDto result = paymentService.verifyPayment(request.getImpUid(), buyerId, request.getOrderId(), request.getUsePointAmount());
 
             response.put("success", true);
             response.put("data", result);

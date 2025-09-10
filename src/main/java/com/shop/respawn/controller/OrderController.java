@@ -4,18 +4,19 @@ import com.shop.respawn.dto.*;
 import com.shop.respawn.dto.order.*;
 import com.shop.respawn.dto.user.SellerOrderDetailDto;
 import com.shop.respawn.dto.user.SellerOrderDto;
+import com.shop.respawn.exception.ApiMessage;
 import com.shop.respawn.service.OrderService;
-import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
 import static com.shop.respawn.domain.RefundStatus.*;
-import static com.shop.respawn.util.SessionUtil.*;
+import static com.shop.respawn.util.AuthenticationUtil.*;
 
 
 @RestController
@@ -30,10 +31,11 @@ public class OrderController {
      */
     @PostMapping("/cart")
     public ResponseEntity<Map<String, Object>> orderSelectedFromCart(
-            @RequestBody @Valid OrderRequestDto orderRequest,
-            HttpSession session) {
+            Authentication authentication,
+            @RequestBody @Valid OrderRequestDto orderRequest
+    ) {
         try {
-            Long buyerId = getBuyerIdFromSession(session);
+            Long buyerId = getUserIdFromAuthentication(authentication);
             Long orderId = orderService.prepareOrderSelectedFromCart(buyerId, orderRequest);
 
             return ResponseEntity.ok(Map.of(
@@ -50,9 +52,12 @@ public class OrderController {
      */
     @PostMapping("/prepare")
     public ResponseEntity<Map<String, Object>> prepareOrder(
-            @RequestBody OrderRequestDto orderRequest, HttpSession session) {
+            Authentication authentication,
+            @RequestBody OrderRequestDto orderRequest
+    ) {
         try {
-            Long buyerId = getBuyerIdFromSession(session);  // 로그인된 사용자 ID 가져오기
+            // 로그인된 사용자 ID 가져오기
+            Long buyerId = getUserIdFromAuthentication(authentication);
 
             // 주문 생성 서비스 호출 (itemId, count, buyerId 전달)
             Long orderId = orderService.createTemporaryOrder(buyerId, orderRequest.getItemId(), orderRequest.getCount());
@@ -69,12 +74,13 @@ public class OrderController {
      */
     @PostMapping("/{orderId}/complete")
     public ResponseEntity<Map<String, Object>> completeSelectedOrder(
+            Authentication authentication,
             @PathVariable Long orderId,
-            @RequestBody @Valid OrderRequestDto orderRequest,
-            HttpSession session) {
+            @RequestBody @Valid OrderRequestDto orderRequest
+    ) {
         try {
-            getBuyerIdFromSession(session);
-            orderService.completeSelectedOrder(orderId, orderRequest);
+            Long buyerId = getUserIdFromAuthentication(authentication);
+            orderService.completeSelectedOrder(buyerId, orderId, orderRequest);
 
             return ResponseEntity.ok(Map.of(
                     "message", "선택된 상품의 주문이 성공적으로 완료되었습니다."
@@ -88,9 +94,12 @@ public class OrderController {
      * 주문 완료 상세 페이지
      */
     @GetMapping("/{orderId}/complete-info")
-    public ResponseEntity<?> getOrderCompleteInfo(@PathVariable Long orderId, HttpSession session) {
+    public ResponseEntity<?> getOrderCompleteInfo(
+            Authentication authentication,
+            @PathVariable Long orderId
+    ) {
         try {
-            Long buyerId = getBuyerIdFromSession(session);
+            Long buyerId = getUserIdFromAuthentication(authentication);
             OrderCompleteInfoDto response = orderService.getOrderCompleteInfo(orderId, buyerId);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
@@ -103,10 +112,11 @@ public class OrderController {
      */
     @GetMapping("/{orderId}")
     public ResponseEntity<OrderDetailsDto> getOrderDetails(
-            @PathVariable Long orderId,
-            HttpSession session) {
+            Authentication authentication,
+            @PathVariable Long orderId
+    ) {
         try {
-            Long buyerId = getBuyerIdFromSession(session);
+            Long buyerId = getUserIdFromAuthentication(authentication);
             OrderDetailsDto orderDetails = orderService.getOrderDetails(orderId, buyerId);
             return ResponseEntity.ok(orderDetails);
         } catch (RuntimeException e) {
@@ -118,9 +128,9 @@ public class OrderController {
      * 로그인한 구매자의 주문 내역 조회 API
      */
     @GetMapping("/history")
-    public ResponseEntity<?> getOrderHistory(HttpSession session) {
+    public ResponseEntity<?> getOrderHistory(Authentication authentication) {
         try {
-            Long buyerId = getBuyerIdFromSession(session);
+            Long buyerId = getUserIdFromAuthentication(authentication);
             return ResponseEntity.ok(orderService.getOrderHistory(buyerId));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -131,8 +141,11 @@ public class OrderController {
      * 로그인한 구매자의 주문 내역 단건 조회
      */
     @GetMapping("/history/{orderId}")
-    public ResponseEntity<OrderHistoryDto> getOrderDetail(@PathVariable Long orderId, HttpSession session) {
-        Long buyerId = getBuyerIdFromSession(session);  // 로그인 사용자 아이디
+    public ResponseEntity<OrderHistoryDto> getOrderDetail(
+            Authentication authentication,
+            @PathVariable Long orderId) {
+        // 로그인 사용자 아이디
+        Long buyerId = getUserIdFromAuthentication(authentication);
         OrderHistoryDto order = orderService.getOrderDetail(orderId, buyerId);
         return ResponseEntity.ok(order);
     }
@@ -141,9 +154,10 @@ public class OrderController {
      * 현재 사용자의 모든 임시 주문 삭제 (TEMPORARY 상태인 주문들을 일괄 삭제)
      */
     @DeleteMapping("/temporary")
-    public ResponseEntity<Map<String, Object>> deleteAllTemporaryOrders(HttpSession session) {
+    public ResponseEntity<Map<String, Object>> deleteAllTemporaryOrders(Authentication authentication) {
         try {
-            Long buyerId = getBuyerIdFromSession(session);
+            // 로그인 사용자 아이디
+            Long buyerId = getUserIdFromAuthentication(authentication);
             long deletedCount = orderService.deleteAllTemporaryOrders(buyerId);
 
             return ResponseEntity.ok(Map.of(
@@ -159,8 +173,9 @@ public class OrderController {
      * 현재 사용자의 최근 주문 조회
      */
     @GetMapping("/latest")
-    public ResponseEntity<OrderHistoryDto> getLatestOrder(HttpSession session) {
-        Long buyerId = getBuyerIdFromSession(session);  // 로그인 사용자 아이디
+    public ResponseEntity<OrderHistoryDto> getLatestOrder(Authentication authentication) {
+
+        Long buyerId = getUserIdFromAuthentication(authentication);
 
         OrderHistoryDto latestOrder = orderService.getLatestOrderByBuyerId(buyerId);
 
@@ -171,13 +186,20 @@ public class OrderController {
         return ResponseEntity.ok(latestOrder);
     }
 
+    @GetMapping("/history/recent-month")
+    public ResponseEntity<List<OrderHistoryDto>> getRecentMonthOrders(Authentication authentication) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        List<OrderHistoryDto> orders = orderService.getRecentMonthOrders(buyerId);
+        return ResponseEntity.ok(orders);
+    }
+
     /**
      * 환불 가능한 목록 조회
      */
     @GetMapping("/refundable-items")
-    public ResponseEntity<?> getRefundableItems(HttpSession session) {
+    public ResponseEntity<?> getRefundableItems(Authentication authentication) {
         try {
-            Long buyerId = getBuyerIdFromSession(session); // 기존 buyerId 조회 메서드 활용
+            Long buyerId = getUserIdFromAuthentication(authentication);
             List<OrderHistoryDto> refundableItems = orderService.getRefundableOrderItems(buyerId);
             return ResponseEntity.ok(refundableItems);
         } catch (RuntimeException e) {
@@ -190,13 +212,14 @@ public class OrderController {
      */
     @PostMapping("/{orderId}/items/{orderItemId}/refund")
     public ResponseEntity<?> requestRefund(
+            Authentication authentication,
             @PathVariable Long orderId,
             @PathVariable Long orderItemId,
-            @RequestBody OrderRefundRequestDto refundDto,
-            HttpSession session) {
+            @RequestBody OrderRefundRequestDto refundDto
+    ) {
 
         try {
-            Long buyerId = getBuyerIdFromSession(session); // 기존 세션에서 구매자 ID 조회 메서드
+            Long buyerId = getUserIdFromAuthentication(authentication);
             orderService.requestRefund(orderId, orderItemId, buyerId, refundDto.getReason(), refundDto.getDetail());
             return ResponseEntity.ok(Map.of("message", "해당 아이템의 환불 요청이 완료되었습니다."));
         } catch (RuntimeException e) {
@@ -208,9 +231,9 @@ public class OrderController {
      * 요청한 환불 목록 보기
      */
     @GetMapping("/refund-requests")
-    public ResponseEntity<?> getRefundRequests(HttpSession session) {
+    public ResponseEntity<?> getRefundRequests(Authentication authentication) {
         try {
-            Long buyerId = getBuyerIdFromSession(session);
+            Long buyerId = getUserIdFromAuthentication(authentication);
             List<OrderHistoryDto> refundRequests = orderService.getRefundRequestedItems(buyerId);
             return ResponseEntity.ok(refundRequests);
         } catch (RuntimeException e) {
@@ -222,9 +245,9 @@ public class OrderController {
      * 환불 요청 판매자 확인
      */
     @GetMapping("/seller/refund-requests")
-    public ResponseEntity<?> getRefundRequestsOfSeller(HttpSession session) {
+    public ResponseEntity<?> getRefundRequestsOfSeller(Authentication authentication) {
         try {
-            Long sellerId = getSellerIdFromSession(session);
+            Long sellerId = getUserIdFromAuthentication(authentication);
             List<RefundRequestDetailDto> refundRequests = orderService.getRefundRequestsByStatus(sellerId, REQUESTED);
             return ResponseEntity.ok(refundRequests);
         } catch (RuntimeException e) {
@@ -237,16 +260,13 @@ public class OrderController {
      */
     @PostMapping("/seller/refund-requests/{orderItemId}/complete")
     public ResponseEntity<?> completeRefund(
-            @PathVariable Long orderItemId,
-            HttpSession session) {
+            Authentication  authentication,
+            @PathVariable Long orderItemId) {
 
         try {
-            Long sellerId = getSellerIdFromSession(session);
-            orderService.completeRefund(orderItemId, sellerId);
-            return ResponseEntity.ok(Map.of(
-                    "message", "환불 요청이 성공적으로 완료되었습니다.",
-                    "orderItemId", orderItemId
-            ));
+            Long sellerId = getUserIdFromAuthentication(authentication);
+            String content = orderService.completeRefund(orderItemId, sellerId);
+            return ResponseEntity.ok(ApiMessage.of("success", content));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -256,9 +276,9 @@ public class OrderController {
      * 판매자 환불 요청 완료 조회
      */
     @GetMapping("/seller/refund-completed")
-    public ResponseEntity<?> getCompletedRefunds(HttpSession session) {
+    public ResponseEntity<?> getCompletedRefunds(Authentication authentication) {
         try {
-            Long sellerId = getSellerIdFromSession(session);
+            Long sellerId = getUserIdFromAuthentication(authentication);
             List<RefundRequestDetailDto> completedRefunds = orderService.getRefundRequestsByStatus(sellerId, REFUNDED);
             return ResponseEntity.ok(completedRefunds);
         } catch (RuntimeException e) {
@@ -270,9 +290,9 @@ public class OrderController {
      * 판매자의 item의 주문 기록 조회
      */
     @GetMapping("/seller/orders")
-    public ResponseEntity<List<SellerOrderDto>> getSellerOrders(HttpSession session) {
+    public ResponseEntity<List<SellerOrderDto>> getSellerOrders(Authentication authentication) {
         try {
-            Long sellerId = getSellerIdFromSession(session);
+            Long sellerId = getUserIdFromAuthentication(authentication);
             List<SellerOrderDto> orders  = orderService.getSellerOrders(sellerId);
             return ResponseEntity.ok(orders);
         } catch (RuntimeException e) {
@@ -284,9 +304,12 @@ public class OrderController {
      * 판매자의 item의 주문 상세 조회
      */
     @GetMapping("/seller/orders/{orderItemId}")
-    public ResponseEntity<SellerOrderDetailDto> getSellerOrderDetail(@PathVariable Long orderItemId, HttpSession session) {
+    public ResponseEntity<SellerOrderDetailDto> getSellerOrderDetail(
+            Authentication authentication,
+            @PathVariable Long orderItemId
+    ) {
         try {
-            Long sellerId = getSellerIdFromSession(session);
+            Long sellerId = getUserIdFromAuthentication(authentication);
             SellerOrderDetailDto dto = orderService.getSellerOrderDetail(sellerId, orderItemId);
             return ResponseEntity.ok(dto);
         } catch (RuntimeException e) {
@@ -299,10 +322,11 @@ public class OrderController {
      */
     @PostMapping("/seller/order-items/{orderItemId}/complete-delivery")
     public ResponseEntity<?> completeDelivery(
-            @PathVariable Long orderItemId,
-            HttpSession session) {
+            Authentication authentication,
+            @PathVariable Long orderItemId
+    ) {
         try {
-            Long sellerId = getSellerIdFromSession(session);
+            Long sellerId = getUserIdFromAuthentication(authentication);
             orderService.completeDelivery(orderItemId, sellerId);
             return ResponseEntity.ok(Map.of(
                     "message", "배송이 성공적으로 완료 처리되었습니다.",
