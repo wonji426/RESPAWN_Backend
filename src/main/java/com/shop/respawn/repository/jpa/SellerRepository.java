@@ -1,6 +1,7 @@
 package com.shop.respawn.repository.jpa;
 
 import com.shop.respawn.domain.Seller;
+import com.shop.respawn.repository.UserRepositoryCustom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

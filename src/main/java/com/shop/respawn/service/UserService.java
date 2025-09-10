@@ -10,7 +10,7 @@ import com.shop.respawn.email.EmailService;
 import com.shop.respawn.repository.jpa.AdminRepository;
 import com.shop.respawn.repository.jpa.BuyerRepository;
 import com.shop.respawn.repository.jpa.SellerRepository;
-import com.shop.respawn.repository.jpa.UserRepositoryCustom;
+import com.shop.respawn.repository.UserRepositoryCustom;
 import com.shop.respawn.security.auth.PrincipalDetails;
 import com.shop.respawn.sms.SmsService;
 import com.shop.respawn.util.RedisUtil;

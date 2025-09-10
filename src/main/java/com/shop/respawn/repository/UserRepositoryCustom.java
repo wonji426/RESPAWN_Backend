@@ -1,4 +1,4 @@
-package com.shop.respawn.repository.jpa;
+package com.shop.respawn.repository;
 
 import com.shop.respawn.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
