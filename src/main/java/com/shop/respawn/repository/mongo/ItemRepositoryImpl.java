@@ -32,12 +32,6 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
     }
 
     @Override
-    public List<Item> searchByKeywordRegex(String keyword) {
-        Query q = new Query(buildKeywordOrRegex(keyword));
-        return mongoTemplate.find(q, Item.class);
-    }
-
-    @Override
     public List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds) {
         // 1) 키워드 OR 조건
         Criteria or = buildKeywordOrRegex(keyword == null ? "" : keyword);

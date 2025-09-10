@@ -31,18 +31,6 @@ public class NoticeRepositoryImpl implements NoticeRepositoryCustom{
     }
 
     @Override
-    public List<NoticeSummaryDto> findNoticeSummaries() {
-        return queryFactory
-                .select(new QNoticeSummaryDto(
-                        notice.title,
-                        notice.noticeType,
-                        notice.createdAt
-                ))
-                .from(notice)
-                .fetch();
-    }
-
-    @Override
     public Page<NoticeSummaryDto> findNoticeSummaries(Pageable pageable) {
         List<NoticeSummaryDto> content = queryFactory
                 .select(new QNoticeSummaryDto(

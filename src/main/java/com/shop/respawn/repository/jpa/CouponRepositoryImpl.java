@@ -23,15 +23,6 @@ public class CouponRepositoryImpl implements CouponRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<Coupon> findAllUnusedByBuyerId(Long buyerId) {
-
-        return queryFactory.selectFrom(coupon)
-                .where(coupon.buyer.id.eq(buyerId)
-                        .and(coupon.used.isFalse()))
-                .fetch();
-    }
-
-    @Override
     public List<CouponStatusDto> findAllByBuyerIdQueryDsl(Long buyerId) {
         return queryFactory
                 .select(Projections.constructor(
