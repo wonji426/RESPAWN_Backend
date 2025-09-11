@@ -115,7 +115,7 @@ public class PaymentService {
     /**
      * 결제 정보를 데이터베이스에 저장
      */
-    private void savePayment(PaymentDto paymentDto) {
+    public void savePayment(PaymentDto paymentDto) {
         // Buyer 조회
         Buyer buyer = buyerRepository.findById(paymentDto.getBuyerId())
                 .orElseThrow(() -> new RuntimeException("구매자를 찾을 수 없습니다: " + paymentDto.getBuyerId()));

@@ -1,7 +1,8 @@
 package com.shop.respawn.controller;
 
-import com.shop.respawn.dto.*;
 import com.shop.respawn.dto.order.*;
+import com.shop.respawn.dto.refund.RefundRequest;
+import com.shop.respawn.dto.refund.RefundResponse;
 import com.shop.respawn.dto.user.SellerOrderDetailDto;
 import com.shop.respawn.dto.user.SellerOrderDto;
 import com.shop.respawn.exception.ApiMessage;
@@ -248,7 +249,7 @@ public class OrderController {
     public ResponseEntity<?> getRefundRequestsOfSeller(Authentication authentication) {
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            List<RefundRequestDetailDto> refundRequests = orderService.getRefundRequestsByStatus(sellerId, REQUESTED);
+            List<RefundRequest> refundRequests = orderService.getRefundRequestsByStatus(sellerId, REQUESTED);
             return ResponseEntity.ok(refundRequests);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -265,10 +266,10 @@ public class OrderController {
 
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            String content = orderService.completeRefund(orderItemId, sellerId);
-            return ResponseEntity.ok(ApiMessage.of("success", content));
+            RefundResponse RefundResponse = orderService.completeRefund(orderItemId, sellerId);
+            return ResponseEntity.ok(RefundResponse);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
@@ -279,7 +280,7 @@ public class OrderController {
     public ResponseEntity<?> getCompletedRefunds(Authentication authentication) {
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            List<RefundRequestDetailDto> completedRefunds = orderService.getRefundRequestsByStatus(sellerId, REFUNDED);
+            List<RefundRequest> completedRefunds = orderService.getRefundRequestsByStatus(sellerId, REFUNDED);
             return ResponseEntity.ok(completedRefunds);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

@@ -31,6 +31,27 @@ public class CouponService {
     private final OrderRepository orderRepository;
     private final RedisUtil redisUtil;
 
+    public void newBuyerCoupon(Long buyerId) {
+        Buyer buyer = buyerRepository.findById(buyerId)
+                .orElseThrow(() -> new RuntimeException("구매자 없음: " + buyerId));
+
+        LocalDateTime now = LocalDateTime.now();
+        Coupon welcomeCoupon1 = Coupon.createCoupon(
+                buyer,
+                "신규 가입 축하 쿠폰(10,000원)",
+                10_000L,
+                CouponPolicy.defaultExpiry(now)
+        );
+        Coupon welcomeCoupon2 = Coupon.createCoupon(
+                buyer,
+                "신규 가입 축하 쿠폰(5,000원)",
+                5_000L,
+                CouponPolicy.defaultExpiry(now)
+        );
+        couponRepository.save(welcomeCoupon1);
+        couponRepository.save(welcomeCoupon2);
+    }
+
     // 등급 변경 시 쿠폰 발급
     public void issueGradeCoupon(Long buyerId, Grade tier) {
         Buyer buyer = buyerRepository.findById(buyerId)

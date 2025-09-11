@@ -99,7 +99,7 @@ public class LedgerPointService {
 
     // 사용 취소
     @Transactional
-    public void cancelUse(Long buyerId, Long useLedgerId, String reason, String actor) {
+    public long cancelUse(Long buyerId, Long useLedgerId, String reason, String actor) {
         PointLedger use = ledgerRepository.findById(useLedgerId)
                 .orElseThrow(() -> new RuntimeException("USE 레코드를 찾을 수 없습니다."));
         if (!use.getBuyer().getId().equals(buyerId)) {
@@ -129,6 +129,7 @@ public class LedgerPointService {
         bal.addActive(usedAbs);
         bal.addUsed(-usedAbs);
         balanceRepository.save(bal);
+        return usedAbs;
     }
 
     // 만료 배치

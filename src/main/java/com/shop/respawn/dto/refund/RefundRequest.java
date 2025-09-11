@@ -1,4 +1,4 @@
-package com.shop.respawn.dto;
+package com.shop.respawn.dto.refund;
 
 import com.shop.respawn.domain.*;
 import lombok.Data;
@@ -6,7 +6,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class RefundRequestDetailDto {
+public class RefundRequest {
 
     // 주문 정보
     private Long orderItemId;
@@ -23,7 +23,7 @@ public class RefundRequestDetailDto {
     private RefundInfo refundInfo;
 
     // 생성자
-    public RefundRequestDetailDto(Order order, OrderItem orderItem, Item item, BuyerInfo buyerInfo, AddressInfo addressInfo, RefundInfo refundInfo) {
+    public RefundRequest(Order order, OrderItem orderItem, Item item, BuyerInfo buyerInfo, AddressInfo addressInfo, RefundInfo refundInfo) {
         this.orderItemId = orderItem.getId();
         this.itemName = item.getName();
         this.orderPrice = orderItem.getOrderPrice();
@@ -78,7 +78,7 @@ public class RefundRequestDetailDto {
         private String refundDetail;
         private LocalDateTime requestedAt;
 
-        public RefundInfo(RefundRequest refundRequest) {
+        public RefundInfo(com.shop.respawn.domain.RefundRequest refundRequest) {
             this.refundReason = refundRequest.getRefundReason();
             this.refundDetail = refundRequest.getRefundDetail();
             this.requestedAt = refundRequest.getRequestedAt();

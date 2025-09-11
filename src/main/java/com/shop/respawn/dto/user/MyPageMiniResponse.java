@@ -7,5 +7,5 @@ import com.shop.respawn.domain.Grade;
  * @param couponCount 사용가능 쿠폰 개수
  * @param grade       현재 등급
  */
-public record MyPageMiniResponse(Long activePoint, Long couponCount, Grade grade) {
+public record MyPageMiniResponse(Long activePoint, Long couponCount, Grade grade, Long expirePoint) {
 }

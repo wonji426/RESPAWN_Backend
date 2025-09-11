@@ -33,6 +33,17 @@ public class UserDto {
 
     private Grade grade;
 
+    public UserDto(String userType, String name, String username, String password, String email, String phoneNumber, Role role, Grade grade) {
+        this.userType = userType;
+        this.name = name;
+        this.username = username;
+        this.password = password;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.role = role;
+        this.grade = grade;
+    }
+
     public UserDto(String name, String username, String email, String phoneNumber, String provider, Role role, Grade grade) {
         this.name = name;
         this.username = username;
@@ -51,4 +62,15 @@ public class UserDto {
         this.role = role;
     }
 
+    public UserDto(String userType, String name, String username, String company, Long companyNumber, String password, String email, String phoneNumber, Role role) {
+        this.userType = userType;
+        this.name = name;
+        this.username = username;
+        this.password = password;
+        this.company = company;
+        this.companyNumber = companyNumber;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.role = role;
+    }
 }

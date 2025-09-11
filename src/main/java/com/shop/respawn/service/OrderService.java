@@ -1,8 +1,9 @@
 package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
-import com.shop.respawn.dto.*;
+import com.shop.respawn.dto.refund.RefundRequest;
 import com.shop.respawn.dto.order.*;
+import com.shop.respawn.dto.refund.RefundResponse;
 import com.shop.respawn.dto.user.SellerOrderDetailDto;
 import com.shop.respawn.dto.user.SellerOrderDto;
 import com.shop.respawn.repository.jpa.*;
@@ -19,7 +20,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.shop.respawn.dto.RefundRequestDetailDto.*;
+import static com.shop.respawn.dto.refund.RefundRequest.*;
 
 @Slf4j
 @Service
@@ -666,7 +667,7 @@ public class OrderService {
             throw new RuntimeException("이미 환불 요청 또는 완료된 아이템입니다.");
         }
 
-        RefundRequest refundRequest = new RefundRequest();
+        com.shop.respawn.domain.RefundRequest refundRequest = new com.shop.respawn.domain.RefundRequest();
         refundRequest.setOrderItem(orderItem);
         refundRequest.setBuyer(buyer);
         refundRequest.setRefundReason(reason);
@@ -729,7 +730,7 @@ public class OrderService {
      * 판매자 환불 요청 및 완료 목록 조회
      */
     @Transactional(readOnly = true)
-    public List<RefundRequestDetailDto> getRefundRequestsByStatus(Long sellerId, RefundStatus refundStatus) {
+    public List<RefundRequest> getRefundRequestsByStatus(Long sellerId, RefundStatus refundStatus) {
         // 1. 판매자가 등록한 상품 id 목록 조회
         List<Item> sellerItems = itemService.getItemsBySellerId(String.valueOf(sellerId));
         Set<String> sellerItemIds = sellerItems.stream()
@@ -740,7 +741,7 @@ public class OrderService {
         List<Order> allOrders = orderRepository.findAll();
 
         // 3. 결과 담을 리스트 초기화
-        List<RefundRequestDetailDto> result = new ArrayList<>();
+        List<RefundRequest> result = new ArrayList<>();
 
         // 4. 각 주문별로 주문자(buyer), 주문 아이템 순회
         for (Order order : allOrders) {
@@ -756,7 +757,7 @@ public class OrderService {
                     // 6. 아이템 정보 조회
                     Item item = itemService.getItemById(oi.getItemId());
                     // 7. refundRequest 정보 가져오기
-                    RefundRequest refundRequest = oi.getRefundRequest();
+                    com.shop.respawn.domain.RefundRequest refundRequest = oi.getRefundRequest();
 
                     // 8. 내부 DTO 객체 생성
                     BuyerInfo buyerInfo = new BuyerInfo(buyer);
@@ -764,7 +765,7 @@ public class OrderService {
                     RefundInfo refundInfo = new RefundInfo(refundRequest);
 
                     // 9. DTO 변환 후 결과에 추가
-                    result.add(new RefundRequestDetailDto(order, oi, item, buyerInfo, addressInfo, refundInfo));
+                    result.add(new RefundRequest(order, oi, item, buyerInfo, addressInfo, refundInfo));
 
                     // 10. requestedAt 기준으로 내림차순 정렬
                     result.sort(Comparator.comparing(dto -> dto.getRefundInfo().getRequestedAt(), Comparator.nullsLast(Comparator.reverseOrder())));
@@ -777,7 +778,7 @@ public class OrderService {
     /**
      * 판매자 환불 요청 완료
      */
-    public String completeRefund(Long orderItemId, Long sellerId) {
+    public RefundResponse completeRefund(Long orderItemId, Long sellerId) {
         // 주문 아이템 조회
         OrderItem orderItem = orderItemRepository.findById(orderItemId)
                 .orElseThrow(() -> new RuntimeException("주문 아이템을 찾을 수 없습니다: " + orderItemId));
@@ -801,17 +802,20 @@ public class OrderService {
         item.addStock(orderItem.getCount());
         itemRepository.save(item);
 
-        // (필요시) 주문 상태 또는 결제 상태 업데이트 등 추가 처리 가능
+        // 포인트 적립 취소
+        Long buyerId = orderItem.getOrder().getBuyer().getId();
+        long expirePoint = ledgerPointService.expireBuyer(buyerId);
+
+        // 사용한 포인트 취소
         long price = orderItem.getOrderPrice() * orderItem.getCount();
         long usePointAmount = -(orderItem.getOrder().getPointLedger().getAmount());
         if (price >= usePointAmount) {
-            Long buyerId = orderItem.getOrder().getBuyer().getId();
             Long pointLedgerId = orderItem.getOrder().getPointLedger().getId();
-            ledgerPointService.cancelUse(buyerId, pointLedgerId, "환불에 의한 포인트 사용 취소", "System");
+            long cancelUsePoint = ledgerPointService.cancelUse(buyerId, pointLedgerId, "환불에 의한 포인트 사용 취소", "System");
+            return new RefundResponse(expirePoint, cancelUsePoint, "포인트 사용이 취소되었습니다.");
         } else {
-            return "사용 포인트 보다 작은 금액의 상품을 환불 할 경우 포인트는 반환되지 않습니다.";
+            return new RefundResponse("사용 포인트 보다 작은 금액의 상품을 환불 할 경우 포인트는 반환되지 않습니다.");
         }
-        return "환불이 완료 되었습니다.";
     }
 
     /**

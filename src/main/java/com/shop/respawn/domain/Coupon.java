@@ -65,6 +65,7 @@ public class Coupon {
                 .code(java.util.UUID.randomUUID().toString()) // length=36, unique 충족
                 .name(name)
                 .couponAmount(couponAmount)
+                .issuedAt(LocalDateTime.now())
                 .expiresAt(expiresAt)
                 .used(false)
                 .build();
