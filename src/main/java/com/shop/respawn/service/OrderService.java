@@ -440,38 +440,61 @@ public class OrderService {
     /**
      * 구매자의 주문 내역을 최신순으로 조회하여 DTO 리스트로 반환
      */
-    public List<OrderHistoryDto> getOrderHistory(Long buyerId) {
-        // 1. 주문 목록 조회
-        List<Order> orders = orderRepository.findByBuyer_IdOrderByOrderDateDesc(buyerId);
+    public Page<OrderHistoryDto> getOrderHistory(Long buyerId, Pageable pageable) {
+        // 1) 페이징 조건으로 주문 목록 조회
+        List<Order> orders = orderRepository.findOrdersByBuyerOrderByDateDesc(buyerId, pageable);
 
-        // 2. 반환할 DTO 리스트 준비
-        List<OrderHistoryDto> orderHistoryDtos = new ArrayList<>();
+        // 2) 전체 주문 개수 조회 (페이지 사이즈 등과 별개)
+        long total = orderRepository.countOrdersByBuyer(buyerId);
+
+        if (orders.isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
+        // 3) 주문 ID 리스트 추출
+        List<Long> orderIds = orders.stream()
+                .map(Order::getId)
+                .toList();
+
+        // 4) 주문 아이템 일괄 조회
+        List<OrderItem> orderItems = orderItemRepository.findOrderItemsByOrderIds(orderIds);
+
+        // 5) 주문별 주문 아이템 그룹핑
+        Map<Long, List<OrderItem>> orderItemsByOrderId = orderItems.stream()
+                .collect(Collectors.groupingBy(oi -> oi.getOrder().getId()));
+
+        // 6) 상품 아이디 추출 후 MongoDB에서 일괄 조회
+        List<String> itemIds = orderItems.stream()
+                .map(OrderItem::getItemId)
+                .distinct()
+                .toList();
+
+        List<Item> items = itemService.getPartialItemsByIds(itemIds);
+
+        Map<String, Item> itemMap = items.stream()
+                .collect(Collectors.toMap(Item::getId, i -> i));
+
+        // 7) DTO 리스트 생성
+        List<OrderHistoryDto> content = new ArrayList<>();
 
         for (Order order : orders) {
-            // 2-1. 해당 주문의 아이템 목록 조회 및 DTO 변환
+            List<OrderItem> itemsForOrder = orderItemsByOrderId.getOrDefault(order.getId(), List.of());
             List<OrderHistoryItemDto> itemDtos = new ArrayList<>();
 
-            for (OrderItem orderItem : order.getOrderItems()) {
-                try {
-                    // MongoDB에서 Item 정보 조회
-                    Item item = itemService.getItemById(orderItem.getItemId());
-
-                    // DTO 변환 후 리스트에 추가
-                    OrderHistoryItemDto itemDto = OrderHistoryItemDto.from(orderItem, item);
-                    itemDtos.add(itemDto);
-                } catch (Exception e) {
-                    log.error("아이템 조회 중 오류 발생: orderItemId={}, itemId={}",
-                            orderItem.getId(), orderItem.getItemId(), e); // 혹은 로그 찍기
-                    // 필요하면 기본값 세팅 or 예외 무시
+            for (OrderItem oi : itemsForOrder) {
+                Item item = itemMap.get(oi.getItemId());
+                if (item != null) {
+                    OrderHistoryItemDto dto = OrderHistoryItemDto.from(oi, item);
+                    itemDtos.add(dto);
+                } else {
+                    log.info("상품 정보가 없음: itemId={}", oi.getItemId());
                 }
             }
 
-            // 2-2. 주문 단위 DTO 생성 후 최종 리스트에 추가
-            OrderHistoryDto orderDto = new OrderHistoryDto(order, itemDtos);
-            orderHistoryDtos.add(orderDto);
+            content.add(new OrderHistoryDto(order, itemDtos));
         }
 
-        return orderHistoryDtos;
+        return new PageImpl<>(content, pageable, total);
     }
 
     /**
@@ -544,7 +567,7 @@ public class OrderService {
                     OrderHistoryItemDto dto = OrderHistoryItemDto.from(oi, item);
                     itemDtos.add(dto);
                 } else {
-                    log.info("상품 정보가 없음");
+                    log.info("상품 정보가 없음: itemId={}", oi.getItemId());
                 }
             }
             content.add(new OrderHistoryDto(order, itemDtos));

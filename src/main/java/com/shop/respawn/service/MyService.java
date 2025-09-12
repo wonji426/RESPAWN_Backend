@@ -158,7 +158,7 @@ public class MyService {
         orderRequestDto2.setCouponCode(couponCode);
 
         // 포인트 사용
-        Long usePointAmount = 15000L;
+        Long usePointAmount = 3000L;
         orderService.applyPoints(buyerId, orderId, usePointAmount);
 
         // 상품 구매 완료하기

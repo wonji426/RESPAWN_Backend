@@ -58,4 +58,23 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
         return Optional.ofNullable(result);
     }
 
+    @Override
+    public List<Order> findOrdersByBuyerOrderByDateDesc(Long buyerId, Pageable pageable) {
+        return queryFactory.selectFrom(order)
+                .where(order.buyer.id.eq(buyerId))
+                .orderBy(order.orderDate.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+    }
+
+    @Override
+    public long countOrdersByBuyer(Long buyerId) {
+        Long count = queryFactory.select(order.count())
+                .from(order)
+                .where(order.buyer.id.eq(buyerId))
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
 }

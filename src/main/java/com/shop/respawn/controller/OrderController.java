@@ -128,16 +128,18 @@ public class OrderController {
     }
 
     /**
-     * 로그인한 구매자의 주문 내역 조회 API
+     * 로그인한 구매자의 주문 내역 조회
      */
     @GetMapping("/history")
-    public ResponseEntity<?> getOrderHistory(Authentication authentication) {
-        try {
-            Long buyerId = getUserIdFromAuthentication(authentication);
-            return ResponseEntity.ok(orderService.getOrderHistory(buyerId));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<PageResponse<OrderHistoryDto>> getOrderHistory(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<OrderHistoryDto> orderHistory = orderService.getOrderHistory(buyerId, pageable);
+        return ResponseEntity.ok(PageResponse.from(orderHistory));
     }
 
     /**

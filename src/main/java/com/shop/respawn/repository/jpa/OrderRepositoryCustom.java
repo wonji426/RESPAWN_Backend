@@ -20,4 +20,8 @@ public interface OrderRepositoryCustom {
      */
     Optional<Order> findByIdAndBuyerIdWithItems(Long orderId, Long buyerId);
 
+    List<Order> findOrdersByBuyerOrderByDateDesc(Long buyerId, Pageable pageable);
+
+    long countOrdersByBuyer(Long buyerId);
+
 }
