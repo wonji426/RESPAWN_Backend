@@ -12,4 +12,7 @@ public interface OrderItemRepositoryCustom {
     Page<OrderItem> findDeliveredUnreviewedOrderItems(Long buyerId, List<Long> excludeOrderItemIds, Pageable pageable);
 
     long countByBuyerIdAndDeliveryStatusAndIdNotIn(Long buyerId, DeliveryStatus status, List<Long> excludedOrderItemIds);
+
+    List<OrderItem> findOrderItemsByOrderIds(List<Long> orderIds);
+
 }

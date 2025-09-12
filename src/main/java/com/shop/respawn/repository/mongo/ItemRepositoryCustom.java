@@ -14,9 +14,9 @@ public interface ItemRepositoryCustom {
 
     List<Item> fullTextSearch(String keyword);
 
-    OffsetPage<Item> findItemsByOffsetUsingName(String categoryName, int offset, int limit);
-
     Page<ItemDto> findSimpleItemsBySellerId(String sellerId, Pageable pageable);
 
     Page<ItemDto> findItemsByCategoryWithPageable(String category, Pageable pageable);
+
+    List<Item> findPartialItemsByIds(List<String> itemIds);
 }

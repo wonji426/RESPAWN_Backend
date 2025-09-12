@@ -20,20 +20,6 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<Order> findRecentPaidOrdersByBuyer(Long buyerId, LocalDateTime from, LocalDateTime to, int limit) {
-        return queryFactory
-                .selectFrom(order)
-                .where(
-                        order.buyer.id.eq(buyerId),
-                        order.status.eq(OrderStatus.PAID),
-                        order.orderDate.between(from, to)
-                )
-                .orderBy(order.orderDate.desc())
-                .limit(limit)
-                .fetch();
-    }
-
-    @Override
     public Optional<Order> findByIdAndBuyerIdWithItems(Long orderId, Long buyerId) {
         Order result = queryFactory
                 .select(order)
@@ -46,5 +32,17 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
                 )
                 .fetchOne();
         return Optional.ofNullable(result);
+    }
+
+    @Override
+    public List<Order> findPaidOrdersByBuyerAndDateRange(Long buyerId, LocalDateTime from, LocalDateTime to) {
+        return queryFactory.selectFrom(order)
+                .where(
+                        order.buyer.id.eq(buyerId)
+                        .and(order.orderDate.between(from, to))
+                        .and(order.status.eq(OrderStatus.PAID))
+                )
+                .orderBy(order.orderDate.desc())
+                .fetch();
     }
 }

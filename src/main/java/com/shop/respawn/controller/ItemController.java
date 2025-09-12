@@ -1,9 +1,7 @@
 package com.shop.respawn.controller;
 
 import com.shop.respawn.domain.Item;
-import com.shop.respawn.dto.ItemCategoryDto;
 import com.shop.respawn.dto.ItemDto;
-import com.shop.respawn.dto.OffsetResponse;
 import com.shop.respawn.dto.PageResponse;
 import com.shop.respawn.service.ImageService;
 import com.shop.respawn.service.ItemService;

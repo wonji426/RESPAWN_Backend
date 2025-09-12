@@ -118,6 +118,10 @@ public class ItemService {
         return itemRepository.findSimpleItemsBySellerId(sellerId, pageable);
     }
 
+    public List<Item> getPartialItemsByIds(List<String> itemIds) {
+        return itemRepository.findPartialItemsByIds(itemIds);
+    }
+
     public String getSellerIdByItemId(String itemId) {
         return itemRepository.findById(itemId)
                 .map(Item::getSellerId)

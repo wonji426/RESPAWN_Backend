@@ -3,7 +3,6 @@ package com.shop.respawn.repository.mongo;
 import com.shop.respawn.domain.Category;
 import com.shop.respawn.domain.Item;
 import com.shop.respawn.dto.ItemDto;
-import com.shop.respawn.dto.OffsetPage;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -18,6 +17,7 @@ import org.springframework.data.mongodb.core.query.TextQuery;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static java.util.regex.Pattern.quote;
 
@@ -87,36 +87,6 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
             Query q = new Query(buildKeywordOrRegex(keyword == null ? "" : keyword));
             return mongoTemplate.find(q, Item.class);
         }
-    }
-
-    @Override
-    public OffsetPage<Item> findItemsByOffsetUsingName(String categoryName, int offset, int limit) {
-        int safeOffset = Math.max(0, offset);
-        int safeLimit = Math.min(Math.max(1, limit), 100);
-
-        Query query = new Query();
-
-        if (categoryName != null && !categoryName.isBlank()) {
-            // 1. 이름으로 카테고리 찾기
-            Category targetCategory = mongoTemplate.findOne(
-                    Query.query(Criteria.where("name").is(categoryName)),
-                    Category.class, "categories"
-            );
-
-            if (targetCategory == null) {
-                // 이름과 일치하는 카테고리가 없으면 빈 결과 반환
-                return new OffsetPage<>(List.of(), 0L);
-            }
-
-            // 2. 찾은 카테고리 ID(String)를 ObjectId로 변환하여 조회
-            query.addCriteria(Criteria.where("category").is(new ObjectId(targetCategory.getId())));
-        }
-
-        long total = mongoTemplate.count(query, Item.class, "item");
-        query.skip(safeOffset).limit(safeLimit);
-
-        List<Item> items = mongoTemplate.find(query, Item.class, "item");
-        return new OffsetPage<>(items, total);
     }
 
     @Override
@@ -191,6 +161,32 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
 
         // 7) PageImpl<ItemDto> 생성 및 반환
         return new PageImpl<>(itemDtos, pageable, total);
+    }
+
+    @Override
+    public List<Item> findPartialItemsByIds(List<String> itemIds) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            return List.of();
+        }
+
+        Query query = new Query(Criteria.where("_id").in(itemIds));
+        // 필요한 필드만 프로젝션 설정 (id, name, imageUrl)
+        query.fields()
+                .include("_id")
+                .include("name")
+                .include("imageUrl");
+
+        List<Document> docs = mongoTemplate.find(query, Document.class, "item");
+
+        // Document -> Item 객체 매핑 (필요시 ItemDto로 변환하는 것도 가능)
+        return docs.stream().map(doc -> {
+            Item item = new Item();
+            item.setId(doc.getObjectId("_id").toString());
+            item.setName(doc.getString("name"));
+            item.setImageUrl(doc.getString("imageUrl"));
+            // 실제 Item 객체에 setter가 있다면, 또는 생성자 사용
+            return item;
+        }).collect(Collectors.toList());
     }
 
 }

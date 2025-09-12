@@ -70,4 +70,11 @@ public class OrderItemRepositoryImpl implements OrderItemRepositoryCustom {
 
         return count != null ? count : 0L;
     }
+
+    @Override
+    public List<OrderItem> findOrderItemsByOrderIds(List<Long> orderIds) {
+        return queryFactory.selectFrom(orderItem)
+                .where(orderItem.order.id.in(orderIds))
+                .fetch();
+    }
 }

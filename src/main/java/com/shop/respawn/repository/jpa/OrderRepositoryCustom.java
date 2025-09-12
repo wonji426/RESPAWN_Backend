@@ -11,7 +11,7 @@ public interface OrderRepositoryCustom {
     /**
      * 최근 한달간의 주문 조회
      */
-    List<Order> findRecentPaidOrdersByBuyer(Long buyerId, LocalDateTime from, LocalDateTime to, int limit);
+    List<Order> findPaidOrdersByBuyerAndDateRange(Long buyerId, LocalDateTime from, LocalDateTime to);
 
     /**
      * 구매자 ID와 ORDER ID 아이템 조회

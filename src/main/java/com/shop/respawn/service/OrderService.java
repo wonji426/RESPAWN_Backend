@@ -492,40 +492,61 @@ public class OrderService {
         return new OrderHistoryDto(order, itemDtos);
     }
 
+    /**
+     * 최근 한달 주문 목록
+     */
     @Transactional(readOnly = true)
     public List<OrderHistoryDto> getRecentMonthOrders(Long buyerId) {
-
         LocalDateTime to = LocalDateTime.now();
         LocalDateTime from = to.minusMonths(1);
 
-        // 1) 한달 내 주문 헤더 Top-N (예: 100건 상한)
-        List<Order> orders = orderRepository.findRecentPaidOrdersByBuyer(buyerId, from, to, 100);
+        // 1) 최근 한달간 주문 조회 - 주문과 주문아이템 조인 없이 주문만 조회, 정렬 최신순
+        List<Order> orders = orderRepository.findPaidOrdersByBuyerAndDateRange(buyerId, from, to);
 
         if (orders.isEmpty()) {
             return Collections.emptyList();
         }
 
-        // 2) 주문아이디 목록으로 OrderItem 일괄 로딩 (배치 조회)
-        List<Long> orderIds = orders.stream().map(Order::getId).toList();
+        // 2) 조회된 주문 Id 리스트
+        List<Long> orderIds = orders.stream().map(Order::getId).collect(Collectors.toList());
 
-        // OrderItem을 주문별로 묶기 위한 맵
-        Map<Long, List<OrderItem>> itemsByOrderId = orderItemRepository.findAllByOrder_IdIn(orderIds)
-                .stream()
+        // 3) OrderItem들을 일괄 조회 (batch fetch)
+        List<OrderItem> orderItems = orderItemRepository.findOrderItemsByOrderIds(orderIds);
+
+        // 4) 주문별 주문아이템 그룹핑
+        Map<Long, List<OrderItem>> orderItemsByOrderId = orderItems.stream()
                 .collect(Collectors.groupingBy(oi -> oi.getOrder().getId()));
 
-        // 3) DTO 변환: Mongo Item은 서비스 통해 조회
-        return orders.stream()
-                .map(o -> {
-                    List<OrderItem> orderItems = itemsByOrderId.getOrDefault(o.getId(), List.of());
-                    List<OrderHistoryItemDto> itemDtos = orderItems.stream()
-                            .map(oi -> {
-                                Item item = itemService.getItemById(oi.getItemId());
-                                return OrderHistoryItemDto.from(oi, item);
-                            })
-                            .toList();
-                    return new OrderHistoryDto(o, itemDtos);
-                })
-                .toList();
+        // 5) 주문아이템의 상품아이디 목록 가져오기 및 MongoDB에서 일괄 조회
+        List<String> itemIds = orderItems.stream()
+                .map(OrderItem::getItemId)
+                .distinct()
+                .collect(Collectors.toList());
+        List<Item> items = itemService.getPartialItemsByIds(itemIds);
+        Map<String, Item> itemMap = items.stream()
+                .collect(Collectors.toMap(Item::getId, i -> i));
+
+        // 6) DTO 변환 및 결과 리스트 구성
+        List<OrderHistoryDto> result = new ArrayList<>();
+
+        for (Order order : orders) {
+            List<OrderItem> itemsForOrder = orderItemsByOrderId.getOrDefault(order.getId(), List.of());
+            List<OrderHistoryItemDto> itemDtos = new ArrayList<>();
+            for (OrderItem oi : itemsForOrder) {
+                Item item = itemMap.get(oi.getItemId());
+                if (item != null) {
+                    // OrderHistoryItemDto.from는 주문상품(OrderItem)과 상품(Item)을 받아 DTO 생성하는 팩토리 메서드라고 가정
+                    OrderHistoryItemDto dto = OrderHistoryItemDto.from(oi, item);
+                    itemDtos.add(dto);
+                } else {
+                    log.info("상품 정보가 없음");
+                }
+            }
+            // OrderHistoryDto 생성자도 주문과 주문아이템 DTO 리스트를 받아 생성하는 것으로 가정
+            result.add(new OrderHistoryDto(order, itemDtos));
+        }
+
+        return result;
     }
 
     /**
