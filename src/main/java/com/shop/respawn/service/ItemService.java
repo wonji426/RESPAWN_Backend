@@ -2,6 +2,7 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.ItemDto;
+import com.shop.respawn.repository.mongo.CategoryRepository;
 import com.shop.respawn.repository.mongo.ItemRepository;
 import com.shop.respawn.repository.jpa.OrderItemRepository;
 import com.shop.respawn.repository.jpa.SellerRepository;
@@ -9,10 +10,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 import static com.shop.respawn.domain.DeliveryStatus.*;
 import static com.shop.respawn.domain.OrderStatus.*;
@@ -25,6 +28,7 @@ public class ItemService {
     private final ItemRepository itemRepository;
     private final SellerRepository sellerRepository;
     private final OrderItemRepository orderItemRepository; // 주문 아이템 조회용
+    private final CategoryRepository categoryRepository;
 
     public Item registerItem(ItemDto itemDto, Long sellerId) {
         try {
@@ -197,6 +201,38 @@ public class ItemService {
         return itemRepository.searchByKeywordAndCategories(
                 keyword == null ? "" : keyword.trim(),
                 categoryIds
+        );
+    }
+
+    public ItemDto findItemWithCategoryName(String id) {
+        Item item = itemRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("해당 상품을 찾을 수 없습니다. id=" + id));
+
+        String categoryName = null;
+        ObjectId categoryId = item.getCategory();
+
+        if (categoryId != null) {
+            Optional<Category> categoryOptional = categoryRepository.findById(categoryId.toString());
+            if (categoryOptional.isPresent()) {
+                categoryName = categoryOptional.get().getName();
+            }
+        }
+
+        return new ItemDto(
+                item.getId(),
+                item.getName(),
+                item.getDescription(),
+                item.getDeliveryType(),
+                item.getDeliveryFee(),
+                item.getCompany(),
+                item.getCompanyNumber(),
+                item.getPrice(),
+                item.getStockQuantity(),
+                item.getSellerId(),
+                item.getImageUrl(),
+                item.getCategory(),
+                categoryName,
+                item.getStatus()
         );
     }
 }
