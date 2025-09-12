@@ -1,7 +1,7 @@
 package com.shop.respawn.controller;
 
 import com.shop.respawn.dto.user.BuyerListDto;
-import com.shop.respawn.dto.user.PageResponse;
+import com.shop.respawn.dto.PageResponse;
 import com.shop.respawn.dto.user.SellerListDto;
 import com.shop.respawn.dto.user.UserSummaryDto;
 import com.shop.respawn.service.AdminService;

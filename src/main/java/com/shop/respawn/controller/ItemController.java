@@ -4,9 +4,13 @@ import com.shop.respawn.domain.Item;
 import com.shop.respawn.dto.ItemCategoryDto;
 import com.shop.respawn.dto.ItemDto;
 import com.shop.respawn.dto.OffsetResponse;
+import com.shop.respawn.dto.PageResponse;
 import com.shop.respawn.service.ImageService;
 import com.shop.respawn.service.ItemService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -61,41 +65,29 @@ public class ItemController {
      * 카테고리별 상품 조회
      */
     @GetMapping
-    public ResponseEntity<OffsetResponse<ItemDto>> getItems(
+    public ResponseEntity<PageResponse<ItemDto>> getItems(
             @RequestParam(name = "category", required = false) String category,
-            @RequestParam(name = "offset", defaultValue = "0") int offset,
-            @RequestParam(name = "limit", defaultValue = "8") int limit
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
-        ItemCategoryDto items = itemService.getItemByCategory(category, offset, limit);
-
-        return ResponseEntity.ok(new OffsetResponse<>(items.itemDtos(), offset, limit, items.result().total()));
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ItemDto> items = itemService.getItemByCategory(category, pageable);
+        return ResponseEntity.ok(PageResponse.from(items));
     }
 
     /**
      * 자신이 등록한 아이템 조회
      */
     @GetMapping("/my-items")
-    public ResponseEntity<List<ItemDto>> getItemsOfLoggedInSeller(Authentication authentication) {
+    public ResponseEntity<PageResponse<ItemDto>> getItemsOfLoggedInSeller(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
         Long sellerId = getUserIdFromAuthentication(authentication);
-
-        List<Item> items = itemService.getItemsBySellerId(String.valueOf(sellerId));
-
-        List<ItemDto> itemDtos = items.stream()
-                .map(item -> new ItemDto(item.getId(),
-                        item.getName(),
-                        item.getDescription(),
-                        item.getDeliveryType(),
-                        item.getDeliveryFee(),
-                        item.getCompany(),
-                        item.getCompanyNumber(),
-                        item.getPrice(),
-                        item.getStockQuantity(),
-                        item.getSellerId(),
-                        item.getImageUrl(),
-                        item.getCategory()))
-                .toList();
-
-        return ResponseEntity.ok(itemDtos);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ItemDto> items = itemService.getSimpleItemsBySellerId(String.valueOf(sellerId), pageable);
+        return ResponseEntity.ok(PageResponse.from(items));
     }
 
     /**

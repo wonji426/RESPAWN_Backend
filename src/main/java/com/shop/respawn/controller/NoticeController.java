@@ -3,7 +3,7 @@ package com.shop.respawn.controller;
 import com.shop.respawn.dto.NoticeDto;
 import com.shop.respawn.dto.NoticeResponse;
 import com.shop.respawn.dto.NoticeSummaryDto;
-import com.shop.respawn.dto.user.PageResponse;
+import com.shop.respawn.dto.PageResponse;
 import com.shop.respawn.service.NoticeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

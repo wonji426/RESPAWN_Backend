@@ -5,8 +5,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.bson.types.ObjectId;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
 public class ItemDto {
@@ -68,4 +66,21 @@ public class ItemDto {
         this.status = status;
     }
 
+    public ItemDto(String id, String name, String company, String imageUrl, String deliveryType, Long price, long stockQuantity) {
+        this.id = id;
+        this.name = name;
+        this.company = company;
+        this.imageUrl = imageUrl;
+        this.deliveryType = deliveryType;
+        this.price = price;
+        this.stockQuantity = stockQuantity;
+    }
+
+    public ItemDto(String id, String name, String company, Long price, String imageUrl) {
+        this.id = id;
+        this.name = name;
+        this.company = company;
+        this.price = price;
+        this.imageUrl = imageUrl;
+    }
 }

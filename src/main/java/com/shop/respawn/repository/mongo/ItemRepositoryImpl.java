@@ -2,9 +2,14 @@ package com.shop.respawn.repository.mongo;
 
 import com.shop.respawn.domain.Category;
 import com.shop.respawn.domain.Item;
+import com.shop.respawn.dto.ItemDto;
 import com.shop.respawn.dto.OffsetPage;
 import lombok.RequiredArgsConstructor;
+import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -113,4 +118,79 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
         List<Item> items = mongoTemplate.find(query, Item.class, "item");
         return new OffsetPage<>(items, total);
     }
+
+    @Override
+    public Page<ItemDto> findSimpleItemsBySellerId(String sellerId, Pageable pageable) {
+        Query query = new Query(Criteria.where("sellerId").is(sellerId)).with(pageable);
+        query.fields()
+                .include("_id")
+                .include("name")
+                .include("company")
+                .include("imageUrl")
+                .include("deliveryType")
+                .include("price")
+                .include("stockQuantity");
+        List<Document> docs = mongoTemplate.find(query, Document.class, "item");
+        List<ItemDto> list = docs.stream()
+                .map(doc -> new ItemDto(
+                        doc.getObjectId("_id").toString(),
+                        doc.getString("name"),
+                        doc.getString("company"),
+                        doc.getString("imageUrl"),
+                        doc.getString("deliveryType"),
+                        doc.getLong("price"),
+                        doc.getLong("stockQuantity")
+                )).toList();
+        long total = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), "item"); // 전체 개수
+        return new PageImpl<>(list, pageable, total);
+    }
+
+    @Override
+    public Page<ItemDto> findItemsByCategoryWithPageable(String category, Pageable pageable) {
+        Query query = new Query();
+
+        if (category != null && !category.isBlank()) {
+            // 1) 카테고리 이름으로 카테고리 조회
+            Category targetCategory = mongoTemplate.findOne(
+                    Query.query(Criteria.where("name").is(category)),
+                    Category.class, "categories"
+            );
+            if (targetCategory == null) {
+                return new PageImpl<>(List.of(), pageable, 0);
+            }
+
+            // 2) 카테고리 ObjectId 기준으로 검색 조건 생성
+            query.addCriteria(Criteria.where("category").is(new ObjectId(targetCategory.getId())));
+        }
+
+        // 3) 페이징 및 필요한 필드 프로젝션 적용
+        query.with(pageable);
+        query.fields()
+                .include("_id")
+                .include("name")
+                .include("company")
+                .include("price")
+                .include("imageUrl");
+
+        // 4) 전체 카운트 조회 (페이징 제외)
+        long total = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), Item.class, "item");
+
+        // 5) 데이터 조회
+        List<Item> items = mongoTemplate.find(query, Item.class, "item");
+
+        // 6) ItemDto 변환
+        List<ItemDto> itemDtos = items.stream()
+                .map(item -> new ItemDto(
+                        item.getId(),
+                        item.getName(),
+                        item.getCompany(),
+                        item.getPrice(),
+                        item.getImageUrl()
+                ))
+                .toList();
+
+        // 7) PageImpl<ItemDto> 생성 및 반환
+        return new PageImpl<>(itemDtos, pageable, total);
+    }
+
 }

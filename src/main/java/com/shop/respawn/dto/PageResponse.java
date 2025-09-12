@@ -1,4 +1,4 @@
-package com.shop.respawn.dto.user;
+package com.shop.respawn.dto;
 
 import org.springframework.data.domain.Page;
 

@@ -2,13 +2,13 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.ItemDto;
-import com.shop.respawn.dto.OffsetPage;
-import com.shop.respawn.dto.ItemCategoryDto;
 import com.shop.respawn.repository.mongo.ItemRepository;
 import com.shop.respawn.repository.jpa.OrderItemRepository;
 import com.shop.respawn.repository.jpa.SellerRepository;
 import lombok.RequiredArgsConstructor;
-import org.jetbrains.annotations.NotNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,19 +87,35 @@ public class ItemService {
                 .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + id));
     }
 
-    @NotNull
-    public ItemCategoryDto getItemByCategory(String category, int offset, int limit) {
-        OffsetPage<Item> result = itemRepository.findItemsByOffsetUsingName(category, offset, limit);
+    public Page<ItemDto> getItemByCategory(String category, Pageable pageable) {
+        Page<ItemDto> itemPage = itemRepository.findItemsByCategoryWithPageable(category, pageable);
 
-        List<ItemDto> itemDtos = result.items().stream()
-                .map(item -> new ItemDto(item.getId(), item.getName(), item.getDescription(), item.getDeliveryType(), item.getDeliveryFee(), item.getCompany(),
-                        item.getCompanyNumber(), item.getPrice(), item.getStockQuantity(), item.getSellerId(), item.getImageUrl(), item.getCategory()))
+        List<ItemDto> itemDtos = itemPage.stream()
+                .map(item -> new ItemDto(
+                        item.getId(),
+                        item.getName(),
+                        item.getDescription(),
+                        item.getDeliveryType(),
+                        item.getDeliveryFee(),
+                        item.getCompany(),
+                        item.getCompanyNumber(),
+                        item.getPrice(),
+                        item.getStockQuantity(),
+                        item.getSellerId(),
+                        item.getImageUrl(),
+                        item.getCategory()
+                ))
                 .toList();
-        return new ItemCategoryDto(result, itemDtos);
+
+        return new PageImpl<>(itemDtos, pageable, itemPage.getTotalElements());
     }
 
     public List<Item> getItemsBySellerId(String sellerId) {
         return itemRepository.findBySellerId(sellerId);
+    }
+
+    public Page<ItemDto> getSimpleItemsBySellerId(String sellerId, Pageable pageable) {
+        return itemRepository.findSimpleItemsBySellerId(sellerId, pageable);
     }
 
     public String getSellerIdByItemId(String itemId) {
