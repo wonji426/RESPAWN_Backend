@@ -1,5 +1,6 @@
 package com.shop.respawn.controller;
 
+import com.shop.respawn.dto.PageResponse;
 import com.shop.respawn.dto.order.*;
 import com.shop.respawn.dto.refund.RefundRequest;
 import com.shop.respawn.dto.refund.RefundResponse;
@@ -8,6 +9,9 @@ import com.shop.respawn.dto.user.SellerOrderDto;
 import com.shop.respawn.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -186,10 +190,15 @@ public class OrderController {
     }
 
     @GetMapping("/history/recent-month")
-    public ResponseEntity<List<OrderHistoryDto>> getRecentMonthOrders(Authentication authentication) {
+    public ResponseEntity<PageResponse<OrderHistoryDto>> getRecentMonthOrders(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
         Long buyerId = getUserIdFromAuthentication(authentication);
-        List<OrderHistoryDto> orders = orderService.getRecentMonthOrders(buyerId);
-        return ResponseEntity.ok(orders);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<OrderHistoryDto> orders = orderService.getRecentMonthOrders(buyerId, pageable);
+        return ResponseEntity.ok(PageResponse.from(orders));
     }
 
     /**

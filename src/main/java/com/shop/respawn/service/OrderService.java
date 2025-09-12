@@ -12,6 +12,9 @@ import com.shop.respawn.util.RedisUtil;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -496,28 +499,31 @@ public class OrderService {
      * 최근 한달 주문 목록
      */
     @Transactional(readOnly = true)
-    public List<OrderHistoryDto> getRecentMonthOrders(Long buyerId) {
+    public Page<OrderHistoryDto> getRecentMonthOrders(Long buyerId, Pageable pageable) {
         LocalDateTime to = LocalDateTime.now();
         LocalDateTime from = to.minusMonths(1);
 
-        // 1) 최근 한달간 주문 조회 - 주문과 주문아이템 조인 없이 주문만 조회, 정렬 최신순
-        List<Order> orders = orderRepository.findPaidOrdersByBuyerAndDateRange(buyerId, from, to);
+        // 1) 최근 한달간 주문 Page 조회 (주문만 페이징, 정렬 최신순)
+        List<Order> orders = orderRepository.findPaidOrdersByBuyerAndDateRange(buyerId, from, to, pageable);
+
+        // 2) 전체 주문 개수 조회 (같은 조건으로 카운트)
+        long total = orderRepository.countPaidOrdersByBuyerAndDateRange(buyerId, from, to);
 
         if (orders.isEmpty()) {
-            return Collections.emptyList();
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
-        // 2) 조회된 주문 Id 리스트
+        // 3) 조회된 주문 Id 리스트
         List<Long> orderIds = orders.stream().map(Order::getId).collect(Collectors.toList());
 
-        // 3) OrderItem들을 일괄 조회 (batch fetch)
+        // 4) OrderItem들을 일괄 조회 (batch fetch)
         List<OrderItem> orderItems = orderItemRepository.findOrderItemsByOrderIds(orderIds);
 
-        // 4) 주문별 주문아이템 그룹핑
+        // 5) 주문별 주문아이템 그룹핑
         Map<Long, List<OrderItem>> orderItemsByOrderId = orderItems.stream()
                 .collect(Collectors.groupingBy(oi -> oi.getOrder().getId()));
 
-        // 5) 주문아이템의 상품아이디 목록 가져오기 및 MongoDB에서 일괄 조회
+        // 6) 주문아이템의 상품아이디 목록 가져오기 및 MongoDB에서 일괄 조회
         List<String> itemIds = orderItems.stream()
                 .map(OrderItem::getItemId)
                 .distinct()
@@ -526,8 +532,8 @@ public class OrderService {
         Map<String, Item> itemMap = items.stream()
                 .collect(Collectors.toMap(Item::getId, i -> i));
 
-        // 6) DTO 변환 및 결과 리스트 구성
-        List<OrderHistoryDto> result = new ArrayList<>();
+        // 7) DTO 변환 및 결과 리스트 구성
+        List<OrderHistoryDto> content = new ArrayList<>();
 
         for (Order order : orders) {
             List<OrderItem> itemsForOrder = orderItemsByOrderId.getOrDefault(order.getId(), List.of());
@@ -535,18 +541,16 @@ public class OrderService {
             for (OrderItem oi : itemsForOrder) {
                 Item item = itemMap.get(oi.getItemId());
                 if (item != null) {
-                    // OrderHistoryItemDto.from는 주문상품(OrderItem)과 상품(Item)을 받아 DTO 생성하는 팩토리 메서드라고 가정
                     OrderHistoryItemDto dto = OrderHistoryItemDto.from(oi, item);
                     itemDtos.add(dto);
                 } else {
                     log.info("상품 정보가 없음");
                 }
             }
-            // OrderHistoryDto 생성자도 주문과 주문아이템 DTO 리스트를 받아 생성하는 것으로 가정
-            result.add(new OrderHistoryDto(order, itemDtos));
+            content.add(new OrderHistoryDto(order, itemDtos));
         }
 
-        return result;
+        return new PageImpl<>(content, pageable, total);
     }
 
     /**

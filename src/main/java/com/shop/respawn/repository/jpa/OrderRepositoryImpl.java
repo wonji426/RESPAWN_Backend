@@ -4,6 +4,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.shop.respawn.domain.Order;
 import com.shop.respawn.domain.OrderStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -20,6 +21,29 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
     private final JPAQueryFactory queryFactory;
 
     @Override
+    public List<Order> findPaidOrdersByBuyerAndDateRange(Long buyerId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        return queryFactory.selectFrom(order)
+                .where(order.buyer.id.eq(buyerId)
+                        .and(order.orderDate.between(from, to))
+                        .and(order.status.eq(OrderStatus.PAID)))
+                .orderBy(order.orderDate.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+    }
+
+    @Override
+    public long countPaidOrdersByBuyerAndDateRange(Long buyerId, LocalDateTime from, LocalDateTime to) {
+        Long count = queryFactory.select(order.count())
+                .from(order)
+                .where(order.buyer.id.eq(buyerId)
+                        .and(order.orderDate.between(from, to))
+                        .and(order.status.eq(OrderStatus.PAID)))
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    @Override
     public Optional<Order> findByIdAndBuyerIdWithItems(Long orderId, Long buyerId) {
         Order result = queryFactory
                 .select(order)
@@ -34,15 +58,4 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
         return Optional.ofNullable(result);
     }
 
-    @Override
-    public List<Order> findPaidOrdersByBuyerAndDateRange(Long buyerId, LocalDateTime from, LocalDateTime to) {
-        return queryFactory.selectFrom(order)
-                .where(
-                        order.buyer.id.eq(buyerId)
-                        .and(order.orderDate.between(from, to))
-                        .and(order.status.eq(OrderStatus.PAID))
-                )
-                .orderBy(order.orderDate.desc())
-                .fetch();
-    }
 }
