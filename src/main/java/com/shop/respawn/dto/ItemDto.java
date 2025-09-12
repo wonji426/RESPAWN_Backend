@@ -1,5 +1,7 @@
 package com.shop.respawn.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.shop.respawn.domain.ItemStatus;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -31,7 +33,10 @@ public class ItemDto {
 
     private String imageUrl;
 
+    @JsonSerialize(using = ToStringSerializer.class)
     private ObjectId category;
+
+    private String categoryName;
 
     private ItemStatus status;
 
@@ -63,6 +68,23 @@ public class ItemDto {
         this.sellerId = sellerId;
         this.imageUrl = imageUrl;
         this.category = category;
+        this.status = status;
+    }
+
+    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, String categoryName, ItemStatus status) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.deliveryType = deliveryType;
+        this.deliveryFee = deliveryFee;
+        this.company = company;
+        this.companyNumber = companyNumber;
+        this.price = price;
+        this.stockQuantity = stockQuantity;
+        this.sellerId = sellerId;
+        this.imageUrl = imageUrl;
+        this.category = category;
+        this.categoryName = categoryName;
         this.status = status;
     }
 
