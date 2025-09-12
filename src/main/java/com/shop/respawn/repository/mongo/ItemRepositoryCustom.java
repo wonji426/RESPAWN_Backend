@@ -2,7 +2,6 @@ package com.shop.respawn.repository.mongo;
 
 import com.shop.respawn.domain.Item;
 import com.shop.respawn.dto.ItemDto;
-import com.shop.respawn.dto.OffsetPage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
