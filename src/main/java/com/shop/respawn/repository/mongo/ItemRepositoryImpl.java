@@ -17,6 +17,7 @@ import org.springframework.data.mongodb.core.query.TextQuery;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static java.util.regex.Pattern.quote;
@@ -187,6 +188,16 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
             // 실제 Item 객체에 setter가 있다면, 또는 생성자 사용
             return item;
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    public Optional<Category> findCategoryByName(String name) {
+        if (name == null || name.isBlank()) {
+            return Optional.empty();
+        }
+        Query query = Query.query(Criteria.where("name").is(name));
+        Category category = mongoTemplate.findOne(query, Category.class, "categories");
+        return Optional.ofNullable(category);
     }
 
 }
