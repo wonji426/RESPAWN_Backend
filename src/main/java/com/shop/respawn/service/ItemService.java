@@ -36,6 +36,11 @@ public class ItemService {
             Seller findSeller = sellerRepository.findById(sellerId)
                     .orElseThrow(() -> new RuntimeException("판매자를 찾을 수 없습니다"));
 
+            Category category = itemRepository.findCategoryByName(itemDto.getCategoryName())
+                    .orElseThrow(() -> new RuntimeException("존재하지 않는 카테고리입니다: " + itemDto.getCategory()));
+
+            ObjectId categoryId = new ObjectId(category.getId());
+
             Item newItem = new Item();
             newItem.setName(itemDto.getName());
             newItem.setDeliveryType(itemDto.getDeliveryType());
@@ -46,7 +51,7 @@ public class ItemService {
             newItem.setStockQuantity(itemDto.getStockQuantity());
             newItem.setSellerId(String.valueOf(sellerId));
             newItem.setImageUrl(itemDto.getImageUrl()); // 대표 사진 경로만 저장
-            newItem.setCategory(itemDto.getCategory());
+            newItem.setCategory(categoryId);
             newItem.setDescription(itemDto.getDescription());
             if (newItem.getStatus() == null && ItemStatus.class.isEnum()) {
                 newItem.setStatus(ItemStatus.SALE);
@@ -67,6 +72,11 @@ public class ItemService {
             throw new RuntimeException("본인이 등록한 상품만 수정할 수 있습니다.");
         }
 
+        Category category = itemRepository.findCategoryByName(itemDto.getCategoryName())
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 카테고리입니다: " + itemDto.getCategory()));
+
+        ObjectId categoryId = new ObjectId(category.getId());
+
         // 상품 정보 수정
         item.setName(itemDto.getName());
         item.setDescription(itemDto.getDescription());
@@ -76,7 +86,7 @@ public class ItemService {
         item.setCompanyNumber(itemDto.getCompanyNumber());
         item.setPrice(itemDto.getPrice());
         item.setStockQuantity(itemDto.getStockQuantity());
-        item.setCategory(itemDto.getCategory());
+        item.setCategory(categoryId);
 
         // 이미지 URL은 별도의 로직으로 처리하거나 그대로 유지
         if (itemDto.getImageUrl() != null && !itemDto.getImageUrl().isEmpty()) {
