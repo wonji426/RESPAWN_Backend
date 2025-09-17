@@ -75,7 +75,7 @@ public class InquiryController {
      * 상품별 제목 조회
      */
     @GetMapping("/{itemId}/titles")
-    public ResponseEntity<?> getInquiryTitles(
+    public ResponseEntity<PageResponse<InquirySummaryResponse>> getInquiryTitles(
             @PathVariable String itemId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -131,7 +131,7 @@ public class InquiryController {
     // 1) 판매자가 본인 상품에 대한 문의 목록 조회
     // 페이징 해야됨
     @GetMapping("/seller")
-    public ResponseEntity<?> getSellerInquiries(
+    public ResponseEntity<PageResponse<InquiryResponse>> getSellerInquiries(
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -142,7 +142,7 @@ public class InquiryController {
         Sort sortSpec = Sort.by(Sort.Direction.fromString(direction), sort);
         Pageable pageable = PageRequest.of(page, size, sortSpec);
         Page<InquiryResponse> result = productInquiryService.getInquiriesBySellerId(String.valueOf(sellerId), pageable);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(PageResponse.from(result));
     }
 
     // 2) 판매자가 문의에 답변 등록/수정
