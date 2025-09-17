@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class ProductInquiryResponseDto {
+public class InquirySummaryResponse {
 
     private String id;
 
@@ -15,19 +15,11 @@ public class ProductInquiryResponseDto {
 
     private String itemId;
 
-    private String itemName;
-
     private String inquiryType;
 
     private String question;
 
-    private String questionDetail;
-
-    private String answer;
-
     private LocalDateTime questionDate;
-
-    private LocalDateTime answerDate;
 
     private String status;
 

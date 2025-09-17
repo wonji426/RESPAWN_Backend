@@ -1,8 +1,9 @@
 package com.shop.respawn.controller;
 
-import com.shop.respawn.dto.productInquiry.ProductInquiryRequestDto;
-import com.shop.respawn.dto.productInquiry.ProductInquiryResponseDto;
-import com.shop.respawn.dto.productInquiry.ProductInquiryResponseTitlesDto;
+import com.shop.respawn.dto.PageResponse;
+import com.shop.respawn.dto.productInquiry.InquiryRequest;
+import com.shop.respawn.dto.productInquiry.InquiryResponse;
+import com.shop.respawn.dto.productInquiry.InquirySummaryResponse;
 import com.shop.respawn.service.ItemService;
 import com.shop.respawn.service.ProductInquiryService;
 
@@ -10,6 +11,10 @@ import jakarta.validation.Valid;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -33,11 +38,11 @@ public class InquiryController {
     @PostMapping
     public ResponseEntity<?> createInquiry(
             Authentication authentication,
-            @RequestBody @Valid ProductInquiryRequestDto dto
+            @RequestBody @Valid InquiryRequest dto
     ) {
         try {
             Long buyerId = getUserIdFromAuthentication(authentication);
-            ProductInquiryResponseDto created = productInquiryService.createInquiry(String.valueOf(buyerId), dto);
+            InquiryResponse created = productInquiryService.createInquiry(String.valueOf(buyerId), dto);
             return ResponseEntity.ok(Map.of("message", "상품 문의가 등록되었습니다.", "inquiry", created));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -48,13 +53,21 @@ public class InquiryController {
      * 자신이 작성한 문의 조회
      */
     @GetMapping("/my")
-    public ResponseEntity<?> getMyInquiries(Authentication authentication) {
+    public ResponseEntity<PageResponse<InquiryResponse>> getMyInquiries(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "questionDate") String sort,
+            @RequestParam(defaultValue = "DESC") String direction
+            ) {
         try {
             Long buyerId = getUserIdFromAuthentication(authentication);
-            List<ProductInquiryResponseDto> inquiries = productInquiryService.getInquiriesByBuyer(String.valueOf(buyerId));
-            return ResponseEntity.ok(inquiries);
+            Sort sortSpec = Sort.by(Sort.Direction.fromString(direction), sort);
+            Pageable pageable = PageRequest.of(page, size, sortSpec);
+            Page<InquiryResponse> inquiries = productInquiryService.getInquiriesByBuyer(String.valueOf(buyerId), pageable);
+            return ResponseEntity.ok(PageResponse.from(inquiries));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().build();
         }
     }
 
@@ -64,7 +77,7 @@ public class InquiryController {
     @GetMapping("/titles")
     public ResponseEntity<?> getInquiryTitles() {
         // 상품별 혹은 전체 문의 제목 노출 (필요하면 매개변수 추가 가능)
-        List<ProductInquiryResponseTitlesDto> inquiries = productInquiryService.getAllInquiryTitles();
+        List<InquirySummaryResponse> inquiries = productInquiryService.getAllInquiryTitles();
         return ResponseEntity.ok(inquiries);
     }
 
@@ -74,7 +87,7 @@ public class InquiryController {
     @GetMapping("/{itemId}/titles")
     public ResponseEntity<?> getInquiryTitlesByItem(@PathVariable String itemId) {
         // 특정 상품(itemId)에 대한 문의 제목만 조회
-        List<ProductInquiryResponseTitlesDto> inquiries = productInquiryService.getInquiryTitlesByItemId(itemId);
+        List<InquirySummaryResponse> inquiries = productInquiryService.getInquiryTitlesByItemId(itemId);
         return ResponseEntity.ok(inquiries);
     }
 
@@ -87,7 +100,7 @@ public class InquiryController {
     ) {
         try {
 
-            ProductInquiryResponseDto inquiryDto = productInquiryService.getInquiryById(inquiryId);
+            InquiryResponse inquiryDto = productInquiryService.getInquiryById(inquiryId);
             if (inquiryDto == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -119,7 +132,7 @@ public class InquiryController {
     @GetMapping("/item/{itemId}")
     public ResponseEntity<?> getInquiriesByItem(@PathVariable String itemId) {
         try {
-            List<ProductInquiryResponseDto> inquiries = productInquiryService.getInquiriesByItem(itemId);
+            List<InquiryResponse> inquiries = productInquiryService.getInquiriesByItem(itemId);
             return ResponseEntity.ok(inquiries);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -131,7 +144,7 @@ public class InquiryController {
     public ResponseEntity<?> getInquiriesForSeller(Authentication authentication) {
         try {
             String sellerId = String.valueOf(getUserIdFromAuthentication(authentication));
-            List<ProductInquiryResponseDto> inquiries = productInquiryService.getInquiriesBySellerId(sellerId);
+            List<InquiryResponse> inquiries = productInquiryService.getInquiriesBySellerId(sellerId);
             return ResponseEntity.ok(inquiries);
         } catch (RuntimeException e) {
             return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
@@ -153,7 +166,7 @@ public class InquiryController {
                 return ResponseEntity.badRequest().body(Map.of("error", "답변 내용을 입력하세요."));
             }
 
-            ProductInquiryResponseDto updatedInquiry = productInquiryService.answerInquiry(inquiryId, answer, sellerId);
+            InquiryResponse updatedInquiry = productInquiryService.answerInquiry(inquiryId, answer, sellerId);
             return ResponseEntity.ok(Map.of("message", "답변이 등록되었습니다.", "inquiry", updatedInquiry));
         } catch (RuntimeException e) {
             return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
