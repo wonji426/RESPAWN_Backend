@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,8 +50,34 @@ public class ProductInquiryService {
         // 정렬을 Pageable로 전달하는 버전 권장
         Page<ProductInquiry> page = productInquiryRepository.findByItemId(itemId, pageable);
 
+        if (page.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // 2) buyerId distinct 추출
+        List<String> buyerIds = page.getContent().stream()
+                .map(ProductInquiry::getBuyerId)
+                .distinct()
+                .toList();
+
+        // 3) Buyer 일괄 조회 후 id -> username 매핑
+        // BuyerRepository가 JPA(Long id)라면 문자열을 Long으로 변환
+        Map<Long, String> idToUsername = buyerRepository.findAllById(
+                        buyerIds.stream().map(Long::valueOf).toList())
+                .stream()
+                .collect(Collectors.toMap(Buyer::getId, Buyer::getUsername));
+
+        Function<String, String> mask = MaskingUtil::maskMiddleFourChars; // 마스킹 원하면 사용
+
+        // 4) DTO 변환
         List<InquirySummaryResponse> content = page.getContent().stream()
-                .map(InquirySummaryResponse::of)
+                .map(inquiry -> {
+                    InquirySummaryResponse dto = InquirySummaryResponse.of(inquiry);
+                    String username = idToUsername.getOrDefault(Long.valueOf(inquiry.getBuyerId()), "알 수 없음");
+                    String maskUsername = mask.apply(username); // 공개 목록에서 마스킹 원하면 주석 해제
+                    dto.setBuyerUsername(maskUsername);
+                    return dto;
+                })
                 .toList();
 
         return new PageImpl<>(content, pageable, page.getTotalElements());

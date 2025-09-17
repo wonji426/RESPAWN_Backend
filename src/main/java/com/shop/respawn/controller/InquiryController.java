@@ -74,6 +74,7 @@ public class InquiryController {
     /**
      * 상품별 제목 조회
      */
+    // 문의 스테이터스 오픈 투 퍼블릭으로
     @GetMapping("/{itemId}/titles")
     public ResponseEntity<PageResponse<InquirySummaryResponse>> getInquiryTitles(
             @PathVariable String itemId,
