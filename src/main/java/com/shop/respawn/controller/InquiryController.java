@@ -81,13 +81,15 @@ public class InquiryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "questionDate") String sort,
-            @RequestParam(defaultValue = "DESC") String direction
+            @RequestParam(defaultValue = "DESC") String direction,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean openToPublic
     ) {
         try {
             Sort sortSpec = Sort.by(Sort.Direction.fromString(direction), sort);
             Pageable pageable = PageRequest.of(page, size, sortSpec);
             Page<InquirySummaryResponse> result =
-                    productInquiryService.getInquiryTitlesByItemId(itemId, pageable);
+                    productInquiryService.getInquiryTitlesByItemId(itemId, status, openToPublic, pageable);
             return ResponseEntity.ok(PageResponse.from(result));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();

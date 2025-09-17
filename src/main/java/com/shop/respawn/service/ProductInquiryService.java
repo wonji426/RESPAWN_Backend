@@ -46,41 +46,49 @@ public class ProductInquiryService {
     }
 
     //상품별 제목 조회
-    public Page<InquirySummaryResponse> getInquiryTitlesByItemId(String itemId, Pageable pageable) {
-        // 정렬을 Pageable로 전달하는 버전 권장
+    public Page<InquirySummaryResponse> getInquiryTitlesByItemId(
+            String itemId, String status, Boolean openToPublic, Pageable pageable) {
+
         Page<ProductInquiry> page = productInquiryRepository.findByItemId(itemId, pageable);
 
-        if (page.isEmpty()) {
-            return Page.empty(pageable);
-        }
-
-        // 2) buyerId distinct 추출
-        List<String> buyerIds = page.getContent().stream()
-                .map(ProductInquiry::getBuyerId)
-                .distinct()
+        // 옵션 필터
+        List<ProductInquiry> filtered = page.getContent().stream()
+                .filter(pi -> status == null || status.isBlank() || pi.getStatus().name().equalsIgnoreCase(status))
+                .filter(pi -> openToPublic == null || pi.isOpenToPublic() == openToPublic)
                 .toList();
 
-        // 3) Buyer 일괄 조회 후 id -> username 매핑
-        // BuyerRepository가 JPA(Long id)라면 문자열을 Long으로 변환
+        if (filtered.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, 0);
+        }
+
+        // username 일괄 조회
+        List<String> buyerIds = filtered.stream().map(ProductInquiry::getBuyerId).distinct().toList();
         Map<Long, String> idToUsername = buyerRepository.findAllById(
-                        buyerIds.stream().map(Long::valueOf).toList())
-                .stream()
-                .collect(Collectors.toMap(Buyer::getId, Buyer::getUsername));
+                buyerIds.stream().map(Long::valueOf).toList()
+        ).stream().collect(Collectors.toMap(Buyer::getId, Buyer::getUsername));
 
-        Function<String, String> mask = MaskingUtil::maskMiddleFourChars; // 마스킹 원하면 사용
+        // 공개 정책 반영하여 DTO 매핑
+        List<InquirySummaryResponse> content = filtered.stream()
+                .map(pi -> {
+                    InquirySummaryResponse dto = InquirySummaryResponse.of(pi);
+                    String username = idToUsername.getOrDefault(Long.valueOf(pi.getBuyerId()), "알 수 없음");
+                    boolean isPublic = pi.isOpenToPublic();
+                    boolean answered = "ANSWERED".equals(pi.getStatus().name());
 
-        // 4) DTO 변환
-        List<InquirySummaryResponse> content = page.getContent().stream()
-                .map(inquiry -> {
-                    InquirySummaryResponse dto = InquirySummaryResponse.of(inquiry);
-                    String username = idToUsername.getOrDefault(Long.valueOf(inquiry.getBuyerId()), "알 수 없음");
-                    String maskUsername = mask.apply(username); // 공개 목록에서 마스킹 원하면 주석 해제
-                    dto.setBuyerUsername(maskUsername);
+                    if (!isPublic) {
+                        dto.setQuestion("비공개 문의입니다.");
+                        dto.setBuyerUsername(MaskingUtil.maskUsername(username));
+                    } else if (!answered) {
+                        dto.setBuyerUsername(MaskingUtil.maskUsername(username));
+                    } else {
+                        dto.setBuyerUsername(username);
+                    }
                     return dto;
                 })
                 .toList();
 
-        return new PageImpl<>(content, pageable, page.getTotalElements());
+        // 필터 적용 결과 기준 totalElements
+        return new PageImpl<>(content, pageable, content.size());
     }
 
     // 상품 문의 등록
@@ -158,14 +166,38 @@ public class ProductInquiryService {
         Map<String, String> itemIdToName = sellerItems.stream()
                 .collect(Collectors.toMap(Item::getId, Item::getName));
 
+        // 3-1) buyerId 일괄 조회로 username 매핑
+        List<String> buyerIds = page.getContent().stream()
+                .map(ProductInquiry::getBuyerId)
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .toList();
+
+        Map<Long, String> idToUsername = buyerRepository.findAllById(
+                        buyerIds.stream().map(Long::valueOf).toList())
+                .stream()
+                .collect(Collectors.toMap(Buyer::getId, Buyer::getUsername));
+
+        // 판매자 화면 정책에 따라 마스킹 적용 여부 결정 (예: 미적용)
+        Function<String, String> usernamePolicy = MaskingUtil::maskMiddleFourChars; // 필요 시 적용
+
         // 4) DTO 변환
         List<InquiryResponse> content = page.getContent().stream()
-                .map(productInquiry -> InquiryResponse.of(productInquiry, itemIdToName))
-        .toList();
+                .map(pi -> {
+                    String username = idToUsername.getOrDefault(Long.valueOf(pi.getBuyerId()), "알 수 없음");
+                    String maskUsername = usernamePolicy.apply(username); // 정책상 마스킹 원하면 사용
+                    return InquiryResponse.of(
+                            pi,
+                            itemIdToName.getOrDefault(pi.getItemId(), "알 수 없는 상품"),
+                            maskUsername
+                    );
+                })
+                .toList();
 
         // 5) Page 래핑
         return new PageImpl<>(content, pageable, page.getTotalElements());
     }
+
 
     // 판매자가 문의에 답변 등록
     public InquiryResponse answerInquiry(String inquiryId, String answer, String sellerId) {
