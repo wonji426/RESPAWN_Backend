@@ -31,55 +31,29 @@ public class ProductInquiryService {
 
     // 문의 ID로 상세 조회
     public InquiryResponse getInquiryById(String inquiryId) {
-        InquiryResponse inquiryResponse = productInquiryRepository.findById(inquiryId)
-                .map(this::toResponseDto)
-                .orElse(null);
-        if (inquiryResponse != null) {
-            String buyerId = inquiryResponse.getBuyerId();
-            Buyer findBuyer = buyerRepository.findById(Long.valueOf(buyerId))
-                    .orElseThrow(() -> new RuntimeException("구매자를 찾을 수 없습니다."));
-            String maskUsername = MaskingUtil.maskUsername(findBuyer.getUsername());
-            inquiryResponse.setBuyerUsername(maskUsername);
-        }
-        return inquiryResponse;
+        // 1) 문의 조회
+        ProductInquiry inquiry = productInquiryRepository.findById(inquiryId)
+                .orElseThrow(() -> new RuntimeException("문의가 존재하지 않습니다."));
+
+        // 2) 구매자 username 조회 및 마스킹
+        Buyer buyer = buyerRepository.findById(Long.valueOf(inquiry.getBuyerId()))
+                .orElseThrow(() -> new RuntimeException("구매자를 찾을 수 없습니다."));
+        String maskedUsername = MaskingUtil.maskUsername(buyer.getUsername());
+
+        // 3) DTO 생성 (정적 팩토리)
+        return InquiryResponse.of(inquiry, maskedUsername);
     }
 
     //상품별 제목 조회
-    public List<InquirySummaryResponse> getInquiryTitlesByItemId(String itemId) {
-        List<ProductInquiry> inquiries = productInquiryRepository.findAllByItemIdOrderByQuestionDateDesc(itemId);
-        return getInquirySummaryResponses(inquiries);
-    }
+    public Page<InquirySummaryResponse> getInquiryTitlesByItemId(String itemId, Pageable pageable) {
+        // 정렬을 Pageable로 전달하는 버전 권장
+        Page<ProductInquiry> page = productInquiryRepository.findByItemId(itemId, pageable);
 
-    // 제목용 제목 목록 조회 (question 일부만 잘라서 리턴하는 별도 DTO/방법 추천)
-    public List<InquirySummaryResponse> getAllInquiryTitles() {
-        List<ProductInquiry> inquiries = productInquiryRepository.findAll();
-        return getInquirySummaryResponses(inquiries);
-    }
+        List<InquirySummaryResponse> content = page.getContent().stream()
+                .map(InquirySummaryResponse::of)
+                .toList();
 
-    private List<InquirySummaryResponse> getInquirySummaryResponses(List<ProductInquiry> inquiries) {
-        return inquiries.stream()
-                .map(i -> {
-                    InquirySummaryResponse dto = new InquirySummaryResponse();
-                    dto.setId(i.getId());
-                    dto.setItemId(i.getItemId());
-                    // 제목 역할을 하는 question의 앞부분만 보이도록 처리 (예: 30자)
-                    String question = i.getQuestion();
-                    dto.setQuestion(question.length() > 30 ? question.substring(0, 30) + "..." : question);
-                    dto.setInquiryType(i.getInquiryType());
-                    dto.setStatus(i.getStatus().name());
-                    dto.setQuestionDate(i.getQuestionDate());
-                    dto.setOpenToPublic(i.isOpenToPublic());
-
-                    // 구매자 username 조회 후 마스킹 처리
-                    String username = buyerRepository.findById(Long.valueOf(i.getBuyerId()))
-                            .map(buyer -> MaskingUtil.maskUsername(buyer.getUsername()))
-                            .orElse("알 수 없음");
-                    dto.setBuyerId(i.getBuyerId());
-                    dto.setBuyerUsername(username);
-
-                    return dto;
-                })
-                .collect(Collectors.toList());
+        return new PageImpl<>(content, pageable, page.getTotalElements());
     }
 
     // 상품 문의 등록
@@ -96,8 +70,11 @@ public class ProductInquiryService {
         inquiry.setOpenToPublic(dto.isOpenToPublic());
 
         ProductInquiry saved = productInquiryRepository.save(inquiry);
+        String buyerUsername = buyerRepository.findById(Long.valueOf(buyerId))
+                .map(Buyer::getUsername)
+                .orElse("알 수 없음");
 
-        return toResponseDto(saved);
+        return InquiryResponse.of(saved, buyerUsername);
     }
 
     public Page<InquiryResponse> getInquiriesByBuyer(String buyerId, Pageable pageable) {
@@ -119,43 +96,48 @@ public class ProductInquiryService {
         Map<String, String> itemIdToName = items.stream()
                 .collect(Collectors.toMap(Item::getId, Item::getName));
 
+        String buyerUsername = buyerRepository.findById(Long.valueOf(buyerId))
+                .map(Buyer::getUsername)
+                .orElse("알 수 없음");
+
         // 4) DTO 매핑
         List<InquiryResponse> content = page.getContent().stream()
-                .map(productInquiry -> toResponseDtoWithItemName(productInquiry, itemIdToName))
+                .map(productInquiry -> InquiryResponse
+                        .of(
+                                productInquiry,
+                                itemIdToName.getOrDefault(productInquiry.getItemId(), "알 수 없는 상품"),
+                                buyerUsername
+                        )
+                )
                 .toList();
 
         // 5) Page로 래핑
-        return new PageImpl<>(content, pageable, page.getTotalElements()); // [attached_file:2]
-    }
-
-    public List<InquiryResponse> getInquiriesByItem(String itemId) {
-        List<ProductInquiry> inquiries = productInquiryRepository.findAllByItemIdOrderByQuestionDateDesc(itemId);
-        return inquiries.stream()
-                .map(this::toResponseDto)
-                .collect(Collectors.toList());
+        return new PageImpl<>(content, pageable, page.getTotalElements());
     }
 
     // 판매자의 상품에 달린 모든 문의 조회
-    public List<InquiryResponse> getInquiriesBySellerId(String sellerId) {
-        // 1) 해당 판매자가 판매하는 상품 ID 리스트 조회
+    public Page<InquiryResponse> getInquiriesBySellerId(String sellerId, Pageable pageable) {
+        // 1) 판매자의 아이템 조회
         List<Item> sellerItems = itemService.getItemsBySellerId(sellerId);
-        List<String> sellerItemIds = sellerItems.stream()
-                .map(Item::getId)
-                .toList();
-
-        // 2) 상품 ID 리스트 기준으로 문의 조회
-        if (sellerItemIds.isEmpty()) {
-            return List.of();
+        if (sellerItems.isEmpty()) {
+            return Page.empty(pageable);
         }
-        List<ProductInquiry> inquiries = productInquiryRepository.findAllByItemIdInOrderByQuestionDateDesc(sellerItemIds);
+        List<String> sellerItemIds = sellerItems.stream().map(Item::getId).toList();
 
+        // 2) 문의 페이징 조회 (정렬은 pageable)
+        Page<ProductInquiry> page = productInquiryRepository.findByItemIdIn(sellerItemIds, pageable);
+
+        // 3) itemId → itemName 매핑
         Map<String, String> itemIdToName = sellerItems.stream()
                 .collect(Collectors.toMap(Item::getId, Item::getName));
 
-        // 3) 문의 엔티티를 DTO로 변환 후 반환
-        return inquiries.stream()
-                .map(inquiry -> toResponseDtoWithItemName(inquiry, itemIdToName))
-                .collect(Collectors.toList());
+        // 4) DTO 변환
+        List<InquiryResponse> content = page.getContent().stream()
+                .map(productInquiry -> InquiryResponse.of(productInquiry, itemIdToName))
+        .toList();
+
+        // 5) Page 래핑
+        return new PageImpl<>(content, pageable, page.getTotalElements());
     }
 
     // 판매자가 문의에 답변 등록
@@ -178,45 +160,11 @@ public class ProductInquiryService {
         inquiry.setStatus(InquiryStatus.ANSWERED);
 
         ProductInquiry saved = productInquiryRepository.save(inquiry);
-        return toResponseDto(saved);
-    }
-
-
-    private InquiryResponse toResponseDto(ProductInquiry entity) {
-        // buyerId로 구매자 정보 조회
-        String buyerId = entity.getBuyerId();
+        String buyerId = saved.getBuyerId();
         String buyerUsername = buyerRepository.findById(Long.valueOf(buyerId))
                 .map(Buyer::getUsername)
                 .orElse("알 수 없음");
-
-        return toInquiryResponseDto(entity, buyerUsername);
+        return InquiryResponse.of(saved, buyerUsername);
     }
 
-    private InquiryResponse toResponseDtoWithItemName(ProductInquiry entity, Map<String, String> itemIdToName) {
-        // 구매자 username 추가 시 연동 가능
-        String buyerUsername = buyerRepository.findById(Long.valueOf(entity.getBuyerId()))
-                .map(Buyer::getUsername)
-                .orElse("알 수 없음");
-
-        InquiryResponse inquiryResponseDto = toInquiryResponseDto(entity, buyerUsername);
-        inquiryResponseDto.setItemName(itemIdToName.getOrDefault(entity.getItemId(), "알 수 없는 상품"));  // 상품명 세팅
-        return inquiryResponseDto;
-    }
-
-    private InquiryResponse toInquiryResponseDto(ProductInquiry entity, String buyerUsername) {
-        InquiryResponse inquiryResponse = new InquiryResponse();
-        inquiryResponse.setId(entity.getId());
-        inquiryResponse.setBuyerId(entity.getBuyerId());
-        inquiryResponse.setBuyerUsername(buyerUsername);
-        inquiryResponse.setItemId(entity.getItemId());
-        inquiryResponse.setInquiryType(entity.getInquiryType());
-        inquiryResponse.setQuestion(entity.getQuestion());
-        inquiryResponse.setQuestionDetail(entity.getQuestionDetail());
-        inquiryResponse.setAnswer(entity.getAnswer());
-        inquiryResponse.setQuestionDate(entity.getQuestionDate());
-        inquiryResponse.setAnswerDate(entity.getAnswerDate());
-        inquiryResponse.setStatus(entity.getStatus().name());
-        inquiryResponse.setOpenToPublic(entity.isOpenToPublic());
-        return inquiryResponse;
-    }
 }

@@ -59,12 +59,13 @@ public class InquiryController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "questionDate") String sort,
             @RequestParam(defaultValue = "DESC") String direction
-            ) {
+    ) {
         try {
             Long buyerId = getUserIdFromAuthentication(authentication);
             Sort sortSpec = Sort.by(Sort.Direction.fromString(direction), sort);
             Pageable pageable = PageRequest.of(page, size, sortSpec);
-            Page<InquiryResponse> inquiries = productInquiryService.getInquiriesByBuyer(String.valueOf(buyerId), pageable);
+            Page<InquiryResponse> inquiries =
+                    productInquiryService.getInquiriesByBuyer(String.valueOf(buyerId), pageable);
             return ResponseEntity.ok(PageResponse.from(inquiries));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
@@ -72,23 +73,25 @@ public class InquiryController {
     }
 
     /**
-     * 전체 조회 제목만
-     */
-    @GetMapping("/titles")
-    public ResponseEntity<?> getInquiryTitles() {
-        // 상품별 혹은 전체 문의 제목 노출 (필요하면 매개변수 추가 가능)
-        List<InquirySummaryResponse> inquiries = productInquiryService.getAllInquiryTitles();
-        return ResponseEntity.ok(inquiries);
-    }
-
-    /**
      * 상품별 제목 조회
      */
     @GetMapping("/{itemId}/titles")
-    public ResponseEntity<?> getInquiryTitlesByItem(@PathVariable String itemId) {
-        // 특정 상품(itemId)에 대한 문의 제목만 조회
-        List<InquirySummaryResponse> inquiries = productInquiryService.getInquiryTitlesByItemId(itemId);
-        return ResponseEntity.ok(inquiries);
+    public ResponseEntity<?> getInquiryTitles(
+            @PathVariable String itemId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "questionDate") String sort,
+            @RequestParam(defaultValue = "DESC") String direction
+    ) {
+        try {
+            Sort sortSpec = Sort.by(Sort.Direction.fromString(direction), sort);
+            Pageable pageable = PageRequest.of(page, size, sortSpec);
+            Page<InquirySummaryResponse> result =
+                    productInquiryService.getInquiryTitlesByItemId(itemId, pageable);
+            return ResponseEntity.ok(PageResponse.from(result));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
 
@@ -126,29 +129,21 @@ public class InquiryController {
         }
     }
 
-    /**
-     * 상품별 문의 조회
-     */
-    @GetMapping("/item/{itemId}")
-    public ResponseEntity<?> getInquiriesByItem(@PathVariable String itemId) {
-        try {
-            List<InquiryResponse> inquiries = productInquiryService.getInquiriesByItem(itemId);
-            return ResponseEntity.ok(inquiries);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
     // 1) 판매자가 본인 상품에 대한 문의 목록 조회
+    // 페이징 해야됨
     @GetMapping("/seller")
-    public ResponseEntity<?> getInquiriesForSeller(Authentication authentication) {
-        try {
-            String sellerId = String.valueOf(getUserIdFromAuthentication(authentication));
-            List<InquiryResponse> inquiries = productInquiryService.getInquiriesBySellerId(sellerId);
-            return ResponseEntity.ok(inquiries);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<?> getSellerInquiries(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "questionDate") String sort,
+            @RequestParam(defaultValue = "DESC") String direction
+    ) {
+        Long sellerId = getUserIdFromAuthentication(authentication);
+        Sort sortSpec = Sort.by(Sort.Direction.fromString(direction), sort);
+        Pageable pageable = PageRequest.of(page, size, sortSpec);
+        Page<InquiryResponse> result = productInquiryService.getInquiriesBySellerId(String.valueOf(sellerId), pageable);
+        return ResponseEntity.ok(result);
     }
 
     // 2) 판매자가 문의에 답변 등록/수정

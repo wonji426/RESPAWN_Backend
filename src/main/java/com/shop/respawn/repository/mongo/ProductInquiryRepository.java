@@ -9,9 +9,10 @@ import java.util.List;
 
 public interface ProductInquiryRepository extends MongoRepository<ProductInquiry, String> {
 
-    List<ProductInquiry> findAllByItemIdOrderByQuestionDateDesc(String itemId);
-
-    List<ProductInquiry> findAllByItemIdInOrderByQuestionDateDesc(List<String> itemIds);
-
     Page<ProductInquiry> findByBuyerId(String buyerId, Pageable pageable);
+
+    Page<ProductInquiry> findByItemId(String itemId, Pageable pageable);
+
+    Page<ProductInquiry> findByItemIdIn(List<String> itemIds, Pageable pageable);
+
 }
