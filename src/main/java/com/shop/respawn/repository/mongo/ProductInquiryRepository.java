@@ -11,8 +11,6 @@ public interface ProductInquiryRepository extends MongoRepository<ProductInquiry
 
     List<ProductInquiry> findAllByItemIdOrderByQuestionDateDesc(String itemId);
 
-    List<ProductInquiry> findAllByBuyerIdOrderByQuestionDateDesc(String buyerId);
-
     List<ProductInquiry> findAllByItemIdInOrderByQuestionDateDesc(List<String> itemIds);
 
     Page<ProductInquiry> findByBuyerId(String buyerId, Pageable pageable);
