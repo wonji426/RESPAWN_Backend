@@ -2,8 +2,6 @@ package com.shop.respawn.repository.jpa;
 
 import com.shop.respawn.domain.DeliveryStatus;
 import com.shop.respawn.domain.OrderItem;
-import com.shop.respawn.domain.RefundRequest;
-import com.shop.respawn.domain.RefundStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
