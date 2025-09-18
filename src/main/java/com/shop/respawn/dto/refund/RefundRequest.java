@@ -78,10 +78,10 @@ public class RefundRequest {
         private String refundDetail;
         private LocalDateTime requestedAt;
 
-        public RefundInfo(com.shop.respawn.domain.RefundRequest refundRequest) {
-            this.refundReason = refundRequest.getRefundReason();
-            this.refundDetail = refundRequest.getRefundDetail();
-            this.requestedAt = refundRequest.getRequestedAt();
+        public RefundInfo(Refund refund) {
+            this.refundReason = refund.getRefundReason();
+            this.refundDetail = refund.getRefundDetail();
+            this.requestedAt = refund.getRequestedAt();
         }
     }
 }

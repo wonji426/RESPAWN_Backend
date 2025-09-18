@@ -1,5 +1,6 @@
 package com.shop.respawn.controller;
 
+import com.shop.respawn.domain.RefundStatus;
 import com.shop.respawn.dto.PageResponse;
 import com.shop.respawn.dto.order.*;
 import com.shop.respawn.dto.refund.RefundRequest;
@@ -197,10 +198,14 @@ public class OrderController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        Long buyerId = getUserIdFromAuthentication(authentication);
-        Pageable pageable = PageRequest.of(page, size);
-        Page<OrderHistoryDto> orders = orderService.getRecentMonthOrders(buyerId, pageable);
-        return ResponseEntity.ok(PageResponse.from(orders));
+        try {
+            Long buyerId = getUserIdFromAuthentication(authentication);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<OrderHistoryDto> orders = orderService.getRecentMonthOrders(buyerId, pageable);
+            return ResponseEntity.ok(PageResponse.from(orders));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
+        }
     }
 
     /**
@@ -227,7 +232,6 @@ public class OrderController {
             @PathVariable Long orderItemId,
             @RequestBody OrderRefundRequestDto refundDto
     ) {
-
         try {
             Long buyerId = getUserIdFromAuthentication(authentication);
             orderService.requestRefund(orderId, orderItemId, buyerId, refundDto.getReason(), refundDto.getDetail());
@@ -259,14 +263,19 @@ public class OrderController {
      * 환불 요청 판매자 확인
      */
     @GetMapping("/seller/refund-requests")
-    public ResponseEntity<?> getRefundRequestsOfSeller(Authentication authentication) {
+    public ResponseEntity<PageResponse<RefundRequest>> getRefundRequestsOfSeller(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            List<RefundRequest> refundRequests = orderService.getRefundRequestsByStatus(sellerId, REQUESTED);
-            return ResponseEntity.ok(refundRequests);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<RefundRequest> result = orderService.getRefundRequestsByStatus(sellerId, RefundStatus.REQUESTED, pageable);
+            return ResponseEntity.ok(PageResponse.from(result));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
         }
+
     }
 
     /**
@@ -289,15 +298,18 @@ public class OrderController {
     /**
      * 판매자 환불 요청 완료 조회
      */
-    // 페이징
     @GetMapping("/seller/refund-completed")
-    public ResponseEntity<?> getCompletedRefunds(Authentication authentication) {
+    public ResponseEntity<?> getCompletedRefunds(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            List<RefundRequest> completedRefunds = orderService.getRefundRequestsByStatus(sellerId, REFUNDED);
-            return ResponseEntity.ok(completedRefunds);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<RefundRequest> completedRefunds = orderService.getRefundRequestsByStatus(sellerId, REFUNDED, pageable);
+            return ResponseEntity.ok(PageResponse.from(completedRefunds));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
         }
     }
 

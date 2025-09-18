@@ -9,9 +9,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 
 import static com.shop.respawn.domain.QDelivery.delivery;
+import static com.shop.respawn.domain.QOrder.order;
 import static com.shop.respawn.domain.QOrderItem.orderItem;
+import static com.shop.respawn.domain.QRefund.refund;
 
 @Repository
 @RequiredArgsConstructor
@@ -110,4 +113,36 @@ public class OrderItemRepositoryImpl implements OrderItemRepositoryCustom {
         long total = totalCount != null ? totalCount : 0L;
         return new PageImpl<>(content, pageable, total);
     }
+
+    @Override
+    public Page<OrderItem> findRefundItemsBySellerItemIds(Set<String> sellerItemIds, RefundStatus status, Pageable pageable) {
+        // 서비스에서 빈 집합은 미리 처리
+        List<OrderItem> content = queryFactory
+                .selectFrom(orderItem)
+                .leftJoin(orderItem.order, order).fetchJoin()
+                .leftJoin(orderItem.delivery, delivery).fetchJoin()
+                .leftJoin(orderItem.refund, refund).fetchJoin()
+                .where(
+                        orderItem.refundStatus.eq(status),
+                        orderItem.itemId.in(sellerItemIds)
+                )
+                .orderBy(refund.requestedAt.desc().nullsLast(), orderItem.id.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        Long totalCount = queryFactory
+                .select(orderItem.count())
+                .from(orderItem)
+                .leftJoin(orderItem.refund, refund)
+                .where(
+                        orderItem.refundStatus.eq(status),
+                        orderItem.itemId.in(sellerItemIds)
+                )
+                .fetchOne();
+
+        long total = (totalCount == null) ? 0L : totalCount;
+        return new PageImpl<>(content, pageable, total);
+    }
+
 }
