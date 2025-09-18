@@ -1,8 +1,7 @@
 package com.shop.respawn.repository.jpa;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import com.shop.respawn.domain.DeliveryStatus;
-import com.shop.respawn.domain.OrderItem;
+import com.shop.respawn.domain.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -76,5 +75,39 @@ public class OrderItemRepositoryImpl implements OrderItemRepositoryCustom {
         return queryFactory.selectFrom(orderItem)
                 .where(orderItem.order.id.in(orderIds))
                 .fetch();
+    }
+
+    @Override
+    public Page<OrderItem> findRefundItemsByBuyer(Long buyerId, Pageable pageable) {
+        // 환불 상태: REQUESTED/REFUNDED, 주문 상태: ORDERED/PAID 만
+        var statuses = List.of(RefundStatus.REQUESTED, RefundStatus.REFUNDED);
+
+        List<OrderItem> content = queryFactory
+                .selectFrom(orderItem)
+                .leftJoin(orderItem.delivery, delivery).fetchJoin()
+                .leftJoin(orderItem.order).fetchJoin()
+                .where(
+                        orderItem.order.buyer.id.eq(buyerId),
+                        orderItem.order.status.in(OrderStatus.ORDERED, OrderStatus.PAID),
+                        orderItem.refundStatus.in(statuses)
+                )
+                // 최신 요청 우선 정렬: 환불 요청 엔티티가 있다면 requestedAt, 없으면 orderItem.id 기준
+                .orderBy(orderItem.id.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        Long totalCount = queryFactory
+                .select(orderItem.count())
+                .from(orderItem)
+                .where(
+                        orderItem.order.buyer.id.eq(buyerId),
+                        orderItem.order.status.in(OrderStatus.ORDERED, OrderStatus.PAID),
+                        orderItem.refundStatus.in(statuses)
+                )
+                .fetchOne();
+
+        long total = totalCount != null ? totalCount : 0L;
+        return new PageImpl<>(content, pageable, total);
     }
 }

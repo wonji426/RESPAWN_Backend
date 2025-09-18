@@ -733,45 +733,52 @@ public class OrderService {
      * 요청한 환불 목록 보기
      */
     @Transactional(readOnly = true)
-    public List<OrderHistoryDto> getRefundRequestedItems(Long buyerId) {
-        // 해당 buyer의 모든 주문을 가져온다
-        List<Order> orders = orderRepository.findByBuyer_IdOrderByOrderDateDesc(buyerId);
+    public Page<OrderHistoryDto> getRefundRequestedItems(Long buyerId, Pageable pageable) {
+        Page<OrderItem> pageItems = orderItemRepository.findRefundItemsByBuyer(buyerId, pageable);
 
-        List<OrderHistoryDto> refundRequestedOrders = new ArrayList<>();
-
-        for (Order order : orders) {
-            // 주문 아이템 중 환불 요청 또는 완료 상태인 아이템 필터링
-            List<OrderItem> refundItems = order.getOrderItems().stream()
-                    .filter(oi -> oi.getRefundStatus() == RefundStatus.REQUESTED || oi.getRefundStatus() == RefundStatus.REFUNDED)
-                    .toList();
-
-            if (!refundItems.isEmpty()) {
-                // 각 아이템에 대해 Item 정보 조회 및 DTO 변환
-                List<OrderHistoryItemDto> itemDtos = new ArrayList<>();
-                for (OrderItem oi : refundItems) {
-                    try {
-                        Item item = itemService.getItemById(oi.getItemId());
-                        OrderHistoryItemDto dto = OrderHistoryItemDto.from(oi, item);
-                        itemDtos.add(dto);
-                    } catch (Exception e) {
-                        // 예외 로깅 및 무시 또는 기본값 처리
-                        log.error("환불 내역 아이템 조회 중 오류: itemId={}", oi.getItemId(), e);
-                    }
-                }
-                refundRequestedOrders.add(new OrderHistoryDto(order, itemDtos));
-            }
+        if (pageItems.isEmpty()) {
+            return Page.empty(pageable);
         }
 
-        refundRequestedOrders.sort(Comparator.comparing(
-                dto -> dto.getItems().stream()
-                        .map(OrderHistoryItemDto::getRequestedAt)
-                        .filter(Objects::nonNull)
-                        .max(LocalDateTime::compareTo)
-                        .orElse(LocalDateTime.MIN),
-                Comparator.reverseOrder()
-        ));
+        List<OrderItem> content = pageItems.getContent();
 
-        return refundRequestedOrders;
+        // 1) 아이템/주문 키 수집
+        List<String> itemIds = content.stream()
+                .map(OrderItem::getItemId)
+                .distinct()
+                .toList();
+
+        // 2) Mongo에서 필요한 필드만 배치 조회 (ItemService 내부에서 partial 조회 구현 재사용)
+        Map<String, Item> itemMap = itemService.getPartialItemsByIds(itemIds).stream()
+                .collect(Collectors.toMap(Item::getId, it -> it));
+
+        // 3) 주문별 그룹핑 (괄호 누락, getId 해결)
+        Map<Long, List<OrderItem>> byOrderId = content.stream()
+                .collect(Collectors.groupingBy(oi -> oi.getOrder().getId()));
+
+        // 4) DTO 변환 (Optional.get() 제거)
+        List<OrderHistoryDto> dtos = byOrderId.entrySet().stream()
+                .map(entry -> {
+                    Long orderId = entry.getKey();
+                    List<OrderItem> itemsOfOrder = entry.getValue();
+
+                    Order orderRef = itemsOfOrder.stream()
+                            .findFirst()
+                            .map(OrderItem::getOrder)
+                            .orElseThrow(() -> new IllegalStateException("Order not found for orderId=" + orderId));
+
+                    List<OrderHistoryItemDto> itemDtos = itemsOfOrder.stream()
+                            .map(oi -> {
+                                Item item = itemMap.get(oi.getItemId());
+                                return OrderHistoryItemDto.from(oi, item); // 내부에서 null 방어
+                            })
+                            .toList();
+
+                    return new OrderHistoryDto(orderRef, itemDtos);
+                })
+                .toList();
+
+        return new PageImpl<>(dtos, pageable, pageItems.getTotalElements());
     }
 
     /**

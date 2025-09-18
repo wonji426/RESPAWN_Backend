@@ -2,6 +2,8 @@ package com.shop.respawn.repository.jpa;
 
 import com.shop.respawn.domain.DeliveryStatus;
 import com.shop.respawn.domain.OrderItem;
+import com.shop.respawn.domain.RefundRequest;
+import com.shop.respawn.domain.RefundStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -14,5 +16,8 @@ public interface OrderItemRepositoryCustom {
     long countByBuyerIdAndDeliveryStatusAndIdNotIn(Long buyerId, DeliveryStatus status, List<Long> excludedOrderItemIds);
 
     List<OrderItem> findOrderItemsByOrderIds(List<Long> orderIds);
+
+    Page<OrderItem> findRefundItemsByBuyer(Long buyerId, Pageable pageable);
+
 
 }

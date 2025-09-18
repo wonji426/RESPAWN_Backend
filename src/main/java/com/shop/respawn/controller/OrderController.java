@@ -241,13 +241,17 @@ public class OrderController {
      * 요청한 환불 목록 보기
      */
     @GetMapping("/refund-requests")
-    public ResponseEntity<?> getRefundRequests(Authentication authentication) {
+    public ResponseEntity<PageResponse<OrderHistoryDto>> getRefundRequests(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
             Long buyerId = getUserIdFromAuthentication(authentication);
-            List<OrderHistoryDto> refundRequests = orderService.getRefundRequestedItems(buyerId);
-            return ResponseEntity.ok(refundRequests);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<OrderHistoryDto> refundRequests = orderService.getRefundRequestedItems(buyerId, pageable);
+            return ResponseEntity.ok(PageResponse.from(refundRequests));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
         }
     }
 
@@ -285,6 +289,7 @@ public class OrderController {
     /**
      * 판매자 환불 요청 완료 조회
      */
+    // 페이징
     @GetMapping("/seller/refund-completed")
     public ResponseEntity<?> getCompletedRefunds(Authentication authentication) {
         try {
