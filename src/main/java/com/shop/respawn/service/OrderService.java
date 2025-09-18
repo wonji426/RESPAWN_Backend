@@ -863,13 +863,17 @@ public class OrderService {
 
         // 사용한 포인트 취소
         long price = orderItem.getOrderPrice() * orderItem.getCount();
-        long usePointAmount = -(orderItem.getOrder().getPointLedger().getAmount());
-        if (price >= usePointAmount) {
-            Long pointLedgerId = orderItem.getOrder().getPointLedger().getId();
-            long cancelUsePoint = ledgerPointService.cancelUse(buyerId, pointLedgerId, "환불에 의한 포인트 사용 취소", "System");
-            return new RefundResponse(expirePoint, cancelUsePoint, "포인트 사용이 취소되었습니다.");
+        long usePointAmount = 0;
+        if(orderItem.getOrder().getPointLedger() != null){
+            if (price >= usePointAmount) {
+                Long pointLedgerId = orderItem.getOrder().getPointLedger().getId();
+                long cancelUsePoint = ledgerPointService.cancelUse(buyerId, pointLedgerId, "환불에 의한 포인트 사용 취소", "System");
+                return new RefundResponse(expirePoint, cancelUsePoint, "포인트 사용이 취소되었습니다.");
+            } else {
+                return new RefundResponse("사용 포인트 보다 작은 금액의 상품을 환불 할 경우 포인트는 반환되지 않습니다.");
+            }
         } else {
-            return new RefundResponse("사용 포인트 보다 작은 금액의 상품을 환불 할 경우 포인트는 반환되지 않습니다.");
+            return new RefundResponse("환불이 완료 되었습니다.");
         }
     }
 
