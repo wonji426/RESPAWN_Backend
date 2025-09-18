@@ -2,7 +2,8 @@ package com.shop.respawn.repository.mongo;
 
 import com.shop.respawn.domain.Item;
 import com.shop.respawn.domain.Category;
-import com.shop.respawn.dto.ItemDto;
+import com.shop.respawn.dto.item.ItemDto;
+import com.shop.respawn.dto.item.ItemSummaryDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -22,4 +23,6 @@ public interface ItemRepositoryCustom {
     List<Item> findPartialItemsByIds(List<String> itemIds);
 
     Optional<Category> findCategoryByName(String name);
+
+    List<ItemSummaryDto> findItemIdAndNameBySellerId(String sellerId);
 }

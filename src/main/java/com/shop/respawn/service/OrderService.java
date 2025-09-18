@@ -876,35 +876,46 @@ public class OrderService {
     /**
      * 판매자의 item의 주문 기록 조회
      */
-    public List<SellerOrderDto> getSellerOrders(Long sellerId) {
-        // 1. MongoDB에서 해당 판매자의 상품 목록을 모두 조회 (sellerId는 String)
-        List<Item> sellerItems = itemRepository.findBySellerId(sellerId.toString());
+    @Transactional(readOnly = true)
+    public Page<SellerOrderDto> getSellerOrders(Long sellerId, Pageable pageable, String itemId) {
+        // 판매자 소유 아이템 검증 및 아이템 집합 구성
+        Set<String> sellerItemIds = itemService.getItemsBySellerId(String.valueOf(sellerId))
+                .stream().map(Item::getId).collect(Collectors.toSet());
 
-        // 2. 각 상품의 ID만 추출해서 Set으로 변환 (중복 제거 및 빠른 조회를 위해)
-        Set<String> sellerItemIds = sellerItems.stream()
-                .map(Item::getId)
-                .collect(Collectors.toSet());
+        if (sellerItemIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
 
-        // 3. 판매자의 상품이 하나도 없다면 빈 리스트 반환
-        if (sellerItemIds.isEmpty()) return Collections.emptyList();
+        // itemId가 전달되면 소유권 검증 및 단일 필터 적용
+        Set<String> targetItemIds = sellerItemIds;
+        if (itemId != null && !itemId.isBlank()) {
+            if (!sellerItemIds.contains(itemId)) {
+                // 판매자 소유가 아닌 아이템 요청 차단
+                throw new AccessDeniedException("not owner of item");
+            }
+            targetItemIds = Set.of(itemId);
+        }
 
-        // 4. OrderItem 테이블에서 itemId가 판매자의 상품인 주문 아이템들만 조회 (JPA에서 IN 쿼리 생성)
-        List<OrderItem> orderItems = orderItemRepository.findAllByItemIdInOrderByOrder_OrderDateDesc(new ArrayList<>(sellerItemIds));
+        // 페이지 조회
+        Page<OrderItem> pageItems = orderItemRepository.findSellerOrderItemsPage(targetItemIds, pageable);
 
-        // 5. itemId로 빠르게 Item 객체를 참조할 수 있도록 Map으로 구성
-        Map<String, Item> itemMap = sellerItems.stream()
-                .collect(Collectors.toMap(Item::getId, item -> item));
+        if (pageItems.isEmpty()) {
+            return Page.empty(pageable);
+        }
 
-        return orderItems.stream()
-                // 6. 필터링된 주문 아이템들을 DTO 형태로 변환하여 리스트에 담음
-                // ① 주문 상태가 TEMPORARY가 아닌 경우만 필터링
-                .filter(orderItem -> orderItem.getOrder().getStatus() != OrderStatus.TEMPORARY)
-                .map(orderItem -> new SellerOrderDto(
-                        orderItem.getOrder(),               // Order 엔티티
-                        orderItem,                          // OrderItem 엔티티
-                        itemMap.get(orderItem.getItemId())  // Item 엔티티
-                ))
-                .collect(Collectors.toList());              // 7. 최종 주문 목록 반환
+        // 페이지 내 아이템 메타 최소 조회
+        List<String> pageItemIds = pageItems.getContent().stream()
+                .map(OrderItem::getItemId).distinct().toList();
+        Map<String, Item> itemMap = itemService.getPartialItemsByIds(pageItemIds)
+                .stream().collect(Collectors.toMap(Item::getId, it -> it));
+
+        // DTO 변환
+        List<SellerOrderDto> dtos = pageItems.getContent().stream()
+                .filter(oi -> oi.getOrder().getStatus() != OrderStatus.TEMPORARY)
+                .map(oi -> new SellerOrderDto(oi.getOrder(), oi, itemMap.get(oi.getItemId())))
+                .toList();
+
+        return new PageImpl<>(dtos, pageable, pageItems.getTotalElements());
     }
 
     /**

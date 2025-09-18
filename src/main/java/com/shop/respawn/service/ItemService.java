@@ -1,7 +1,8 @@
 package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
-import com.shop.respawn.dto.ItemDto;
+import com.shop.respawn.dto.item.ItemDto;
+import com.shop.respawn.dto.item.ItemSummaryDto;
 import com.shop.respawn.repository.mongo.CategoryRepository;
 import com.shop.respawn.repository.mongo.ItemRepository;
 import com.shop.respawn.repository.jpa.OrderItemRepository;
@@ -144,6 +145,11 @@ public class ItemService {
 
     public List<Item> getItemsByIds(List<String> itemIds) {
         return itemRepository.findAllById(itemIds);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ItemSummaryDto> getMyItemIdAndNames(String sellerId) {
+        return itemRepository.findItemIdAndNameBySellerId(sellerId);
     }
 
     /**

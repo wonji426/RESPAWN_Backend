@@ -21,4 +21,6 @@ public interface OrderItemRepositoryCustom {
 
     Page<OrderItem> findRefundItemsBySellerItemIds(Set<String> sellerItemIds, RefundStatus status, Pageable pageable);
 
+    Page<OrderItem> findSellerOrderItemsPage(Set<String> sellerItemIds, Pageable pageable);
+
 }

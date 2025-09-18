@@ -145,4 +145,35 @@ public class OrderItemRepositoryImpl implements OrderItemRepositoryCustom {
         return new PageImpl<>(content, pageable, total);
     }
 
+    @Override
+    public Page<OrderItem> findSellerOrderItemsPage(Set<String> sellerItemIds, Pageable pageable) {
+        if (sellerItemIds == null || sellerItemIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // content 쿼리: 필요한 연관만 fetch join
+        List<OrderItem> content = queryFactory
+                .selectFrom(orderItem)
+                .leftJoin(orderItem.order, order).fetchJoin()
+                .leftJoin(orderItem.delivery, delivery).fetchJoin()
+                .where(orderItem.itemId.in(sellerItemIds),
+                        order.status.ne(OrderStatus.TEMPORARY))
+                .orderBy(order.orderDate.desc(), orderItem.id.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        // count 쿼리: fetch join 제외
+        Long totalCount = queryFactory
+                .select(orderItem.count())
+                .from(orderItem)
+                .leftJoin(orderItem.order, order)
+                .where(orderItem.itemId.in(sellerItemIds),
+                        order.status.ne(OrderStatus.TEMPORARY))
+                .fetchOne();
+
+        long total = totalCount != null ? totalCount : 0L;
+        return new PageImpl<>(content, pageable, total);
+    }
+
 }

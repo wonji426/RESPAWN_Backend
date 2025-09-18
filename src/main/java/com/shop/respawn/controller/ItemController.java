@@ -1,8 +1,9 @@
 package com.shop.respawn.controller;
 
 import com.shop.respawn.domain.Item;
-import com.shop.respawn.dto.ItemDto;
+import com.shop.respawn.dto.item.ItemDto;
 import com.shop.respawn.dto.PageResponse;
+import com.shop.respawn.dto.item.ItemSummaryDto;
 import com.shop.respawn.service.ImageService;
 import com.shop.respawn.service.ItemService;
 import lombok.RequiredArgsConstructor;
@@ -84,6 +85,13 @@ public class ItemController {
         Pageable pageable = PageRequest.of(page, size);
         Page<ItemDto> items = itemService.getSimpleItemsBySellerId(String.valueOf(sellerId), pageable);
         return ResponseEntity.ok(PageResponse.from(items));
+    }
+
+    @GetMapping("/my-items/summary")
+    public ResponseEntity<List<ItemSummaryDto>> getMyItemNames(Authentication authentication) {
+        Long sellerId = getUserIdFromAuthentication(authentication);
+        List<ItemSummaryDto> result = itemService.getMyItemIdAndNames(String.valueOf(sellerId));
+        return ResponseEntity.ok(result);
     }
 
     /**

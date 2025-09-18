@@ -285,7 +285,6 @@ public class OrderController {
     public ResponseEntity<?> completeRefund(
             Authentication  authentication,
             @PathVariable Long orderItemId) {
-
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
             RefundResponse RefundResponse = orderService.completeRefund(orderItemId, sellerId);
@@ -317,13 +316,18 @@ public class OrderController {
      * 판매자의 item의 주문 기록 조회
      */
     @GetMapping("/seller/orders")
-    public ResponseEntity<List<SellerOrderDto>> getSellerOrders(Authentication authentication) {
+    public ResponseEntity<PageResponse<SellerOrderDto>> getSellerOrders(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String itemId) {
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            List<SellerOrderDto> orders  = orderService.getSellerOrders(sellerId);
-            return ResponseEntity.ok(orders);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<SellerOrderDto> orders = orderService.getSellerOrders(sellerId, pageable, itemId);
+            return ResponseEntity.ok(PageResponse.from(orders));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
         }
     }
 

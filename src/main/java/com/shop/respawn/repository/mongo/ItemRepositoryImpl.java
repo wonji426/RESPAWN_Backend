@@ -2,7 +2,8 @@ package com.shop.respawn.repository.mongo;
 
 import com.shop.respawn.domain.Category;
 import com.shop.respawn.domain.Item;
-import com.shop.respawn.dto.ItemDto;
+import com.shop.respawn.dto.item.ItemDto;
+import com.shop.respawn.dto.item.ItemSummaryDto;
 import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -198,6 +199,20 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
         Query query = Query.query(Criteria.where("name").is(name));
         Category category = mongoTemplate.findOne(query, Category.class, "categories");
         return Optional.ofNullable(category);
+    }
+
+    @Override
+    public List<ItemSummaryDto> findItemIdAndNameBySellerId(String sellerId) {
+        Query query = new Query(Criteria.where("sellerId").is(sellerId));
+        query.fields().include("_id").include("name");
+
+        List<Document> docs = mongoTemplate.find(query, Document.class, "item");
+        return docs.stream()
+                .map(doc -> new ItemSummaryDto(
+                        doc.getObjectId("_id").toString(),
+                        doc.getString("name")
+                ))
+                .toList();
     }
 
 }

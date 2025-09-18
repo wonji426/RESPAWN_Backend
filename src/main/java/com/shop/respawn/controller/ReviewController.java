@@ -65,6 +65,7 @@ public class ReviewController {
     /**
      * 판매자가 자신이 판매한 아이템에 대한 리뷰 보기
      */
+    // 페이징
     @GetMapping("/seller/my-reviews")
     public ResponseEntity<List<ReviewWithItemDto>> getMyItemReviews(
             Authentication authentication,
@@ -85,13 +86,13 @@ public class ReviewController {
     }
 
     // 리뷰 전체 조회: 특정 아이템의 리뷰
+    // 페이징
     @GetMapping("/items/{itemId}")
     public ResponseEntity<List<ReviewWithItemDto>> getReviewsByItemId(@PathVariable String itemId) {
         // 서비스에 위임
         return ResponseEntity.ok(reviewService.getReviewsByItemId(itemId));
     }
 
-    // [1] 본인 작성 리뷰 목록 페이징 조회
     /**
      * 구매자 본인 작성 리뷰 페이징 조회
      * /api/my-reviews/written?page=0&size=10
