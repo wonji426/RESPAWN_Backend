@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -67,7 +68,7 @@ public class InquiryController {
                     productInquiryService.getInquiriesByBuyer(String.valueOf(buyerId), pageable);
             return ResponseEntity.ok(PageResponse.from(inquiries));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
         }
     }
 
@@ -92,7 +93,7 @@ public class InquiryController {
                     productInquiryService.getInquiryTitlesByItemId(itemId, status, openToPublic, pageable);
             return ResponseEntity.ok(PageResponse.from(result));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
         }
     }
 
@@ -132,20 +133,36 @@ public class InquiryController {
     }
 
     // 1) 판매자가 본인 상품에 대한 문의 목록 조회
-    // 페이징 해야됨
     @GetMapping("/seller")
     public ResponseEntity<PageResponse<InquiryResponse>> getSellerInquiries(
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "questionDate") String sort,
-            @RequestParam(defaultValue = "DESC") String direction
+            @RequestParam(defaultValue = "DESC") String direction,
+            @RequestParam(required = false) String itemId
     ) {
-        Long sellerId = getUserIdFromAuthentication(authentication);
-        Sort sortSpec = Sort.by(Sort.Direction.fromString(direction), sort);
-        Pageable pageable = PageRequest.of(page, size, sortSpec);
-        Page<InquiryResponse> result = productInquiryService.getInquiriesBySellerId(String.valueOf(sellerId), pageable);
-        return ResponseEntity.ok(PageResponse.from(result));
+        try {
+            Long sellerId = getUserIdFromAuthentication(authentication);
+            Sort sortSpec = Sort.by(Sort.Direction.fromString(direction), sort);
+            Pageable pageable = PageRequest.of(page, size, sortSpec);
+
+            Page<InquiryResponse> result;
+            if (itemId != null && !itemId.isBlank()) {
+                // 특정 아이템에 대한 판매자 문의만 조회
+                result = productInquiryService.getInquiriesBySellerIdAndItemId(
+                        String.valueOf(sellerId), itemId, pageable
+                );
+            } else {
+                // 기존: 판매자의 전체 문의 조회
+                result = productInquiryService.getInquiriesBySellerId(
+                        String.valueOf(sellerId), pageable
+                );
+            }
+            return ResponseEntity.ok(PageResponse.from(result));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
+        }
     }
 
     // 2) 판매자가 문의에 답변 등록/수정

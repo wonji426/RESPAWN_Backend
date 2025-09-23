@@ -198,7 +198,54 @@ public class ProductInquiryService {
         return new PageImpl<>(content, pageable, page.getTotalElements());
     }
 
+    // 판매자의 특정 아이템에 달린 문의 조회
+    public Page<InquiryResponse> getInquiriesBySellerIdAndItemId(String sellerId, String itemId, Pageable pageable) {
+        // 0) itemId가 해당 seller의 상품인지 검증
+        String ownerSellerId = itemService.getSellerIdByItemId(itemId);
+        if (!sellerId.equals(ownerSellerId)) {
+            // 판매자 소유 아님
+            return Page.empty(pageable);
+        }
 
+        // 1) 대상 아이템 메타(이름) 조회
+        Item item = itemService.getItemById(itemId); // 존재한다고 가정. 없으면 예외/빈페이지 처리
+        String itemName = (item != null && item.getName() != null) ? item.getName() : "알 수 없는 상품";
+
+        // 2) 문의 페이징 조회
+        Page<ProductInquiry> page = productInquiryRepository.findByItemId(itemId, pageable);
+
+        if (page.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // 3) buyerId 일괄 조회 → username 매핑
+        List<String> buyerIds = page.getContent().stream()
+                .map(ProductInquiry::getBuyerId)
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .toList();
+
+        Map<Long, String> idToUsername = buyerRepository.findAllById(
+                        buyerIds.stream().map(Long::valueOf).toList())
+                .stream()
+                .collect(Collectors.toMap(Buyer::getId, Buyer::getUsername));
+
+        // 판매자 화면 정책 마스킹(필요 시)
+        Function<String, String> usernamePolicy = MaskingUtil::maskMiddleFourChars;
+
+        // 4) DTO 변환
+        List<InquiryResponse> content = page.getContent().stream()
+                .map(pi -> {
+                    String username = idToUsername.getOrDefault(Long.valueOf(pi.getBuyerId()), "알 수 없음");
+                    String maskUsername = usernamePolicy.apply(username);
+                    return InquiryResponse.of(pi, itemName, maskUsername);
+                })
+                .toList();
+
+        // 5) Page 래핑
+        return new PageImpl<>(content, pageable, page.getTotalElements());
+    }
+    
     // 판매자가 문의에 답변 등록
     public InquiryResponse answerInquiry(String inquiryId, String answer, String sellerId) {
         ProductInquiry inquiry = productInquiryRepository.findById(inquiryId)
