@@ -2,9 +2,9 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.Admin;
 import com.shop.respawn.domain.Notice;
-import com.shop.respawn.dto.NoticeDto;
-import com.shop.respawn.dto.NoticeResponse;
-import com.shop.respawn.dto.NoticeSummaryDto;
+import com.shop.respawn.dto.notice.NoticeDto;
+import com.shop.respawn.dto.notice.NoticeResponse;
+import com.shop.respawn.dto.notice.NoticeSummaryDto;
 import com.shop.respawn.repository.jpa.AdminRepository;
 import com.shop.respawn.repository.jpa.NoticeRepository;
 import lombok.RequiredArgsConstructor;

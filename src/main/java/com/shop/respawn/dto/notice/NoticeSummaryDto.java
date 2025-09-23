@@ -1,4 +1,4 @@
-package com.shop.respawn.dto;
+package com.shop.respawn.dto.notice;
 
 import com.querydsl.core.annotations.QueryProjection;
 import com.shop.respawn.domain.NoticeType;

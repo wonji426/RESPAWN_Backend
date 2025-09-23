@@ -1,4 +1,4 @@
-package com.shop.respawn.dto;
+package com.shop.respawn.dto.review;
 
 import lombok.Data;
 

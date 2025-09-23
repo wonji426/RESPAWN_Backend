@@ -1,4 +1,4 @@
-package com.shop.respawn.dto;
+package com.shop.respawn.dto.notice;
 
 import com.shop.respawn.domain.NoticeType;
 import lombok.Data;

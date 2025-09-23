@@ -2,7 +2,7 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.AddressDto;
-import com.shop.respawn.dto.NoticeDto;
+import com.shop.respawn.dto.notice.NoticeDto;
 import com.shop.respawn.dto.Payment.PaymentDto;
 import com.shop.respawn.dto.coupon.CouponUsageStatusDto;
 import com.shop.respawn.dto.order.OrderRequestDto;

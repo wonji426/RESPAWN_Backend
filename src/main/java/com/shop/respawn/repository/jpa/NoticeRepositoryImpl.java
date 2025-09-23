@@ -1,8 +1,8 @@
 package com.shop.respawn.repository.jpa;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
-import com.shop.respawn.dto.NoticeSummaryDto;
-import com.shop.respawn.dto.QNoticeSummaryDto;
+import com.shop.respawn.dto.notice.NoticeSummaryDto;
+import com.shop.respawn.dto.notice.QNoticeSummaryDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
