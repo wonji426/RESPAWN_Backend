@@ -129,8 +129,8 @@ public class ItemService {
         return itemRepository.findBySellerId(sellerId);
     }
 
-    public Page<ItemDto> getSimpleItemsBySellerId(String sellerId, Pageable pageable) {
-        return itemRepository.findSimpleItemsBySellerId(sellerId, pageable);
+    public Page<ItemDto> getSimpleItemsBySellerId(String sellerId,String search, Pageable pageable) {
+        return itemRepository.findSimpleItemsBySellerId(sellerId, search, pageable);
     }
 
     public List<Item> getPartialItemsByIds(List<String> itemIds) {

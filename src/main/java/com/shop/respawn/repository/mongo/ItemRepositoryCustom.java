@@ -16,7 +16,7 @@ public interface ItemRepositoryCustom {
 
     List<Item> fullTextSearch(String keyword);
 
-    Page<ItemDto> findSimpleItemsBySellerId(String sellerId, Pageable pageable);
+    Page<ItemDto> findSimpleItemsBySellerId(String sellerId, String search, Pageable pageable);
 
     Page<ItemDto> findItemsByCategoryWithPageable(String category, Pageable pageable);
 
