@@ -6,17 +6,16 @@ import com.shop.respawn.repository.jpa.BuyerRepository;
 import com.shop.respawn.repository.jpa.OrderItemRepository;
 import com.shop.respawn.repository.mongo.ReviewRepository;
 import lombok.RequiredArgsConstructor;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.shop.respawn.util.MaskingUtil.maskMiddleFourChars;
@@ -188,15 +187,58 @@ public class ReviewService {
     }
 
     // 특정 아이템(itemId)에 대한 모든 리뷰 가져오기
-    public List<ReviewWithItemDto> getReviewsByItemId(String itemId) {
-        List<Review> reviews = reviewRepository.findByItemIdOrderByCreatedDateDesc(itemId);
+    @Transactional(readOnly = true)
+    public Page<ReviewWithItemDto> getReviewsByItemId(String itemId, Pageable pageable) {
+        // 1) Mongo: 특정 아이템 리뷰 페이징
+        Page<Review> reviewPage = reviewRepository.findByItemId(itemId, pageable); // 메서드명 단순화 권장
+        if (reviewPage.isEmpty()) {
+            return Page.empty(pageable);
+        }
 
-        Item item = itemService.getItemById(itemId);
-        // 단일 상품이므로 리스트로 만들어 전달
-        List<Item> singleItemList = List.of(item);
+        // 2) 연관 키 수집
+        List<String> orderItemIdStrs = reviewPage.getContent().stream()
+                .map(Review::getOrderItemId).toList();
+        List<Long> orderItemIds = orderItemIdStrs.stream().map(s -> {
+            try { return Long.valueOf(s); } catch (Exception e) { return null; }
+        }).filter(Objects::nonNull).toList();
 
-        // 리뷰 변환 공통 메서드 사용
-        return convertReviewsToDtos(reviews, singleItemList);
+        // 3) 주문아이템 일괄 조회 (RDB)
+        List<OrderItem> orderItems = orderItemRepository.findAllById(orderItemIds);
+        Map<Long, OrderItem> orderItemMap = orderItems.stream()
+                .collect(Collectors.toMap(OrderItem::getId, oi -> oi));
+
+        // 4) 아이템 정보 확보 (이미 itemId 단건이므로 1회 조회 또는 캐시 활용)
+        //    성능을 위해 Mongo에서 필요한 필드만 가져오는 partial 조회 사용 가능
+        Item item = itemService.getItemById(itemId); // 또는 partial 메서드 활용
+        Map<String, Item> itemMap = Map.of(itemId, item);
+
+        // 5) 구매자 이름 일괄 조회 후 마스킹
+        List<Long> buyerIds = reviewPage.getContent().stream()
+                .map(r -> {
+                    try { return Long.parseLong(r.getBuyerId()); } catch (Exception e) { return null; }
+                }).filter(Objects::nonNull).distinct().toList();
+        Map<Long, String> buyerUsernameMap = buyerRepository.findAllById(buyerIds).stream()
+                .collect(Collectors.toMap(Buyer::getId, Buyer::getUsername));
+
+        // 6) DTO 변환 (itemId, itemName, imageUrl, price 포함)
+        List<ReviewWithItemDto> content = reviewPage.getContent().stream().map(r -> {
+            OrderItem oi = null;
+            try { oi = orderItemMap.get(Long.valueOf(r.getOrderItemId())); } catch (Exception ignore) {}
+            Item it = itemMap.getOrDefault(r.getItemId(), item);
+
+            Long bid = null;
+            try { bid = Long.parseLong(r.getBuyerId()); } catch (Exception ignore) {}
+            String masked = "알 수 없는 사용자";
+            if (bid != null) {
+                String username = buyerUsernameMap.get(bid);
+                if (username != null) masked = maskMiddleFourChars(username);
+            }
+
+            Order order = (oi != null) ? oi.getOrder() : null;
+            return new ReviewWithItemDto(r, it, masked, order);
+        }).toList();
+
+        return new PageImpl<>(content, pageable, reviewPage.getTotalElements());
     }
 
     public boolean existsReviewByOrderItemId(Long buyerId, String orderItemId) {
@@ -256,7 +298,7 @@ public class ReviewService {
     public Page<ReviewWithItemDto> getReviewsByBuyerId(String buyerId, Pageable pageable) {
 
         // 1. 리뷰 페이징 조회
-        Page<Review> reviewPage = reviewRepository.findByBuyerIdOrderByCreatedDateDesc(buyerId, pageable);
+        Page<Review> reviewPage = reviewRepository.findByBuyerId(buyerId, pageable);
 
         if (reviewPage.isEmpty()) {
             return Page.empty();
