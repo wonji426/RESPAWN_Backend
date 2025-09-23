@@ -92,8 +92,15 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
     }
 
     @Override
-    public Page<ItemDto> findSimpleItemsBySellerId(String sellerId, Pageable pageable) {
-        Query query = new Query(Criteria.where("sellerId").is(sellerId)).with(pageable);
+    public Page<ItemDto> findSimpleItemsBySellerId(String sellerId,String search, Pageable pageable) {
+        Criteria criteria = Criteria.where("sellerId").is(sellerId);
+
+        if (search != null && !search.isBlank()) {
+            criteria.and("name").regex(search, "i");
+        }
+
+        Query query = new Query(criteria).with(pageable);
+
         query.fields()
                 .include("_id")
                 .include("name")
@@ -102,6 +109,7 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
                 .include("deliveryType")
                 .include("price")
                 .include("stockQuantity");
+
         List<Document> docs = mongoTemplate.find(query, Document.class, "item");
         List<ItemDto> list = docs.stream()
                 .map(doc -> new ItemDto(
@@ -113,7 +121,10 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
                         doc.getLong("price"),
                         doc.getLong("stockQuantity")
                 )).toList();
-        long total = mongoTemplate.count(Query.of(query).limit(-1).skip(-1), "item"); // 전체 개수
+
+        Query countQuery = new Query(criteria);
+        long total = mongoTemplate.count(countQuery, "item");
+
         return new PageImpl<>(list, pageable, total);
     }
 

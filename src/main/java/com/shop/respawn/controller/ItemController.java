@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -79,11 +80,16 @@ public class ItemController {
     public ResponseEntity<PageResponse<ItemDto>> getItemsOfLoggedInSeller(
             Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "_id") String sort,
+            @RequestParam(defaultValue = "desc") String dir
     ) {
         Long sellerId = getUserIdFromAuthentication(authentication);
-        Pageable pageable = PageRequest.of(page, size);
-        Page<ItemDto> items = itemService.getSimpleItemsBySellerId(String.valueOf(sellerId), pageable);
+        Sort.Direction direction = Sort.Direction.fromString(dir);
+        Sort sortOrder = Sort.by(direction, sort);
+        Pageable pageable = PageRequest.of(page, size, sortOrder);
+        Page<ItemDto> items = itemService.getSimpleItemsBySellerId(String.valueOf(sellerId),search, pageable);
         return ResponseEntity.ok(PageResponse.from(items));
     }
 
