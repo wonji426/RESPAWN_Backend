@@ -50,10 +50,6 @@ public class ReviewController {
     ) {
         try {
             Long buyerId = getUserIdFromAuthentication(authentication);
-            if (buyerId == null) {
-                return ResponseEntity.status(401).body("로그인이 필요합니다.");
-            }
-
             reviewService.createReview(buyerId, orderItemId, reviewRequestDto.getRating(), reviewRequestDto.getContent());
             return ResponseEntity.ok("리뷰가 성공적으로 작성되었습니다.");
         } catch (RuntimeException e) {
@@ -65,23 +61,29 @@ public class ReviewController {
     /**
      * 판매자가 자신이 판매한 아이템에 대한 리뷰 보기
      */
-    // 페이징
     @GetMapping("/seller/my-reviews")
-    public ResponseEntity<List<ReviewWithItemDto>> getMyItemReviews(
+    public ResponseEntity<PageResponse<ReviewWithItemDto>> getMyItemReviews(
             Authentication authentication,
-            @RequestParam(required = false) String itemId
+            @RequestParam(required = false) String itemId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdDate") String sort,
+            @RequestParam(defaultValue = "DESC") String direction
     ) {
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            List<ReviewWithItemDto> reviews;
+            Sort sortSpec = Sort.by(Sort.Direction.fromString(direction), sort);
+            Pageable pageable = PageRequest.of(page, size, sortSpec);
+
+            Page<ReviewWithItemDto> result;
             if (itemId != null && !itemId.isEmpty()) {
-                reviews = reviewService.getReviewsBySellerIdAndItemId(String.valueOf(sellerId), itemId);
+                result = reviewService.getReviewsBySellerIdAndItemId(String.valueOf(sellerId), itemId, pageable);
             } else {
-                reviews = reviewService.getReviewsBySellerId(String.valueOf(sellerId));
+                result = reviewService.getReviewsBySellerId(String.valueOf(sellerId), pageable);
             }
-            return ResponseEntity.ok(reviews);
+            return ResponseEntity.ok(PageResponse.from(result));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
         }
     }
 
@@ -103,7 +105,6 @@ public class ReviewController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-
         Pageable pageable = PageRequest.of(page, size);
         Long buyerId = getUserIdFromAuthentication(authentication);
         return ResponseEntity.ok(reviewService.getReviewsByBuyerId(String.valueOf(buyerId), pageable));
