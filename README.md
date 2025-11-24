@@ -9,9 +9,9 @@
 1) 제작기간 & 팀원 소개
 
 2025년 7월 05일 ~ 
-👨‍👩‍👦‍👦 3인 1조 팀프로젝트
+👨‍👩‍👦‍👦 2인 1조 팀프로젝트
 백엔드 (Spring) : 강지원, 유예슬, 김서종
-프론트엔드 (React) : 유예슬, 강지원(보조), 김서종(보조)
+프론트엔드 (React) : 유예슬, 강지원(보조)
 
 
 
@@ -30,10 +30,6 @@ MySQL 8.0
 React ([React Repository](https://github.com/Yuyeseul/RESPAWN_Frontend)이동)
 
 🛠deploy
-
-AWS EC2 (Ubuntu 18.04 LTS)
-AWS RDS (MySQL 8.0)
-
 
 
 3) 시연 영상
