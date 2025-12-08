@@ -4,9 +4,11 @@ import com.shop.respawn.dto.PageResponse;
 import com.shop.respawn.dto.productInquiry.InquiryRequest;
 import com.shop.respawn.dto.productInquiry.InquiryResponse;
 import com.shop.respawn.dto.productInquiry.InquirySummaryResponse;
+import com.shop.respawn.dto.user.UserDto;
 import com.shop.respawn.service.ItemService;
 import com.shop.respawn.service.ProductInquiryService;
 
+import com.shop.respawn.service.UserService;
 import jakarta.validation.Valid;
 
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,7 @@ public class InquiryController {
 
     private final ProductInquiryService productInquiryService;
     private final ItemService itemService;
+    private final UserService userService;
 
     /**
      * 구매자 상품 문의 등록
@@ -118,12 +121,14 @@ public class InquiryController {
                 return ResponseEntity.ok(inquiryDto);
             } else {
                 String userId = String.valueOf(getUserIdFromAuthentication(authentication));
+                String authorities = authentication.getAuthorities().toString();
                 // 권한 체크: 로그인한 유저가 구매자 본인 OR 판매자면 허용
-                if (userId.equals(inquiryDto.getBuyerId()) || userId.equals(sellerId)) {
-                    return ResponseEntity.ok(inquiryDto);
-                } else {
+                if (!((authorities.equals("[ROLE_USER]") && userId.equals(inquiryDto.getBuyerId())) ||
+                        (authorities.equals("[ROLE_SELLER]") && userId.equals(sellerId)))) {
                     return ResponseEntity.status(403).body(Map.of("error", "권한이 없습니다."));
                 }
+
+                return ResponseEntity.ok(inquiryDto);
             }
 
         } catch (RuntimeException e) {
