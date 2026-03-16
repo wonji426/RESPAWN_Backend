@@ -12,7 +12,6 @@ import com.siot.IamportRestClient.IamportClient;
 import com.siot.IamportRestClient.exception.IamportResponseException;
 import com.siot.IamportRestClient.request.PrepareData;
 import com.siot.IamportRestClient.response.IamportResponse;
-import com.siot.IamportRestClient.response.Payment;
 import com.siot.IamportRestClient.response.Prepare;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -83,9 +82,6 @@ public class PaymentService {
         String pgProvider = (String) body.get("pg_provider");
         String cardName = (String) body.get("card_name");
 
-//        IamportResponse<Payment> iamportResponse = iamportClient.paymentByImpUid(impUid);
-//        Long paidAmount = iamportResponse.getResponse().getAmount().longValue();
-
         // 주문 조회
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("주문을 찾을 수 없습니다: " + orderId));
@@ -98,13 +94,6 @@ public class PaymentService {
                     "결제 금액 불일치: PG=" + amount + ", 서버계산=" + order.getTotalAmount()
             );
         }
-
-//        Long amount = iamportResponse.getResponse().getAmount().longValue();
-//        String name = iamportResponse.getResponse().getName();
-//        String status = iamportResponse.getResponse().getStatus();
-//        String paymentMethod = iamportResponse.getResponse().getPayMethod();
-//        String pgProvider = iamportResponse.getResponse().getPgProvider();
-//        String cardName = iamportResponse.getResponse().getCardName();
 
         PaymentDto paymentDto = PaymentDto.builder()
                 .impUid(impUid)
