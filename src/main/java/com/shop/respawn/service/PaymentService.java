@@ -16,11 +16,17 @@ import com.siot.IamportRestClient.response.Payment;
 import com.siot.IamportRestClient.response.Prepare;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -48,28 +54,57 @@ public class PaymentService {
 
     // 결제 검증
     public PaymentDto verifyPayment(String impUid, Long buyerId, Long orderId, Long usePointAmount) throws IamportResponseException, IOException {
-        IamportResponse<Payment> iamportResponse = iamportClient.paymentByImpUid(impUid);
-        Long paidAmount = iamportResponse.getResponse().getAmount().longValue();
+
+        // 1. 토큰 먼저 가져오기 (이건 인증 성공하니까 그대로 사용)
+        String accessToken = iamportClient.getAuth().getResponse().getToken();
+
+        // 2. URL 뒤에 ?include_sandbox=true 강제로 붙이기
+        String url = "https://api.iamport.kr/payments/" + impUid + "?include_sandbox=true";
+
+        // 3. 직접 API 호출 (RestTemplate 사용)
+        RestTemplate restTemplate = new RestTemplate();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", accessToken); // 토큰 세팅
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        // 4. API 응답 받기 (Map 구조로 받아서 데이터 추출)
+        ResponseEntity<Map> responseEntity = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+        Map<String, Object> body = (Map<String, Object>) responseEntity.getBody().get("response");
+
+        if (body == null) {
+            throw new RuntimeException("결제 정보를 가져올 수 없습니다. (Sandbox 포함 확인 필요)");
+        }
+
+        // 5. 데이터 추출 (기존 코드의 response.getResponse() 역할)
+        Long amount = Long.valueOf(body.get("amount").toString());
+        String status = (String) body.get("status");
+        String name = (String) body.get("name");
+        String paymentMethod = (String) body.get("pay_method");
+        String pgProvider = (String) body.get("pg_provider");
+        String cardName = (String) body.get("card_name");
+
+//        IamportResponse<Payment> iamportResponse = iamportClient.paymentByImpUid(impUid);
+//        Long paidAmount = iamportResponse.getResponse().getAmount().longValue();
 
         // 주문 조회
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("주문을 찾을 수 없습니다: " + orderId));
 
         System.out.println("order.getTotalAmount() = " + order.getTotalAmount());
-        System.out.println("paidAmount = " + paidAmount);
+        System.out.println("paidAmount = " + amount);
         // 결제 금액 검증 (배송비 포함된 totalAmount와 비교)
-        if (!paidAmount.equals(order.getTotalAmount())) {
+        if (!amount.equals(order.getTotalAmount())) {
             throw new RuntimeException(
-                    "결제 금액 불일치: PG=" + paidAmount + ", 서버계산=" + order.getTotalAmount()
+                    "결제 금액 불일치: PG=" + amount + ", 서버계산=" + order.getTotalAmount()
             );
         }
 
-        Long amount = iamportResponse.getResponse().getAmount().longValue();
-        String name = iamportResponse.getResponse().getName();
-        String status = iamportResponse.getResponse().getStatus();
-        String paymentMethod = iamportResponse.getResponse().getPayMethod();
-        String pgProvider = iamportResponse.getResponse().getPgProvider();
-        String cardName = iamportResponse.getResponse().getCardName();
+//        Long amount = iamportResponse.getResponse().getAmount().longValue();
+//        String name = iamportResponse.getResponse().getName();
+//        String status = iamportResponse.getResponse().getStatus();
+//        String paymentMethod = iamportResponse.getResponse().getPayMethod();
+//        String pgProvider = iamportResponse.getResponse().getPgProvider();
+//        String cardName = iamportResponse.getResponse().getCardName();
 
         PaymentDto paymentDto = PaymentDto.builder()
                 .impUid(impUid)
