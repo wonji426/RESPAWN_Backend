@@ -43,6 +43,12 @@ public class Notice {
         return notice;
     }
 
+    public void updateNotice(String title, String description, NoticeType noticeType) {
+        this.title = title;
+        this.description = description;
+        this.noticeType = noticeType;
+    }
+
     public void incrementViewCount() {
         this.viewCount++;
     }

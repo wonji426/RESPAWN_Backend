@@ -4,6 +4,7 @@ import com.shop.respawn.dto.notice.NoticeDto;
 import com.shop.respawn.dto.notice.NoticeResponse;
 import com.shop.respawn.dto.notice.NoticeSummaryDto;
 import com.shop.respawn.dto.PageResponse;
+import com.shop.respawn.dto.notice.NoticeUpdateDto;
 import com.shop.respawn.service.NoticeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -65,4 +66,34 @@ public class NoticeController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
+
+    /**
+     * 공지사항 수정 컨트롤러
+     */
+    @PostMapping("/{noticeId}/update")
+    public ResponseEntity<?> updateNotice(
+            @PathVariable Long noticeId,
+            @RequestBody NoticeUpdateDto updateDto
+    ) {
+        try {
+            noticeService.updateNotice(noticeId, updateDto);
+            return ResponseEntity.ok().body("공지사항 수정 성공");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("공지사항 수정 에러: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 공지사항 삭제 컨트롤러
+     */
+    @DeleteMapping("/{noticeId}")
+    public ResponseEntity<?> deleteNotice(@PathVariable Long noticeId) {
+        try {
+            noticeService.deleteNotice(noticeId);
+            return ResponseEntity.ok().body("공지사항 삭제 성공");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("공지사항 삭제 에러: " + e.getMessage());
+        }
+    }
+
 }
