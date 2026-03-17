@@ -206,18 +206,36 @@ public class ItemService {
         return itemRepository.fullTextSearch(keyword.trim());
     }
 
-    public List<Item> searchItemsByCategory(String keyword, List<String> categoryIds) {
-        if ((keyword == null || keyword.isBlank()) && (categoryIds == null || categoryIds.isEmpty())) {
-            return List.of();
+    /**
+     * 고급 검색 페이징(키워드 + 카테고리 + 회사명 + 가격 범위 + 배송 방법)
+     */
+    public Page<ItemDto> searchItemsByCategory(String query, List<String> categoryIds, String company,
+                                               Long minPrice, Long maxPrice, String deliveryType, Pageable pageable) {
+
+        if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
+            throw new IllegalArgumentException("최소 가격이 최대 가격보다 클 수 없습니다.");
         }
-        if (categoryIds == null || categoryIds.isEmpty()) {
-            return searchItems(keyword);
-        }
-        // repository에서 ObjectId 변환 및 IN 처리
-        return itemRepository.searchByKeywordAndCategories(
-                keyword == null ? "" : keyword.trim(),
-                categoryIds
+
+        Page<Item> itemPage = itemRepository.searchByKeywordAndCategories(
+                query, categoryIds, company, minPrice, maxPrice, deliveryType, pageable
         );
+
+        // Page 내부의 Item들을 ItemDto로 변환
+        return itemPage.map(item -> new ItemDto(
+                item.getId(),
+                item.getName(),
+                item.getDescription(),
+                item.getDeliveryType(),
+                item.getDeliveryFee(),
+                item.getCompany(),
+                item.getCompanyNumber(),
+                item.getPrice(),
+                item.getStockQuantity(),
+                item.getSellerId(),
+                item.getImageUrl(),
+                item.getCategory(),
+                item.getStatus()
+        ));
     }
 
     public ItemDto findItemWithCategoryName(String id) {
@@ -252,27 +270,4 @@ public class ItemService {
         );
     }
 
-    /**
-     * 고급 검색 (키워드 + 카테고리 + 회사명 + 가격 범위 + 배송 방법)
-     */
-    public List<Item> searchItemsByCategory(String query,
-                                            List<String> categoryIds,
-                                            String company,
-                                            Long minPrice,
-                                            Long maxPrice,
-                                            String deliveryType) { // 배송 방법 추가
-
-        if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
-            throw new IllegalArgumentException("최소 가격이 최대 가격보다 클 수 없습니다.");
-        }
-
-        return itemRepository.searchByKeywordAndCategories(
-                query,
-                categoryIds,
-                company,
-                minPrice,
-                maxPrice,
-                deliveryType
-        );
-    }
 }

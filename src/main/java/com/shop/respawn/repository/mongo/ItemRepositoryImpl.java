@@ -39,7 +39,8 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
     }
 
     @Override
-    public List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds, String company, Long minPrice, Long maxPrice, String deliveryType) {
+    public Page<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds, String company,
+                                                   Long minPrice, Long maxPrice, String deliveryType, Pageable pageable) {
         Query query = new Query();
 
         // 1) 키워드 OR 조건
@@ -51,84 +52,37 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
         if (categoryIds != null && !categoryIds.isEmpty()) {
             List<Category> cats = mongoTemplate.find(
                     Query.query(Criteria.where("name").in(categoryIds)),
-                    Category.class,
-                    "categories"
+                    Category.class, "categories"
             );
-
             List<ObjectId> catIds = cats.stream()
-                    .map(c -> new ObjectId(c.getId().toString()))
-                    .toList();
+                    .map(c -> new ObjectId(c.getId().toString())).toList();
 
             if (catIds.isEmpty()) {
-                return List.of();
+                return new PageImpl<>(List.of(), pageable, 0);
             }
             query.addCriteria(Criteria.where("category").in(catIds));
         }
 
-        // 3) 회사(판매자) 조건
-        if (company != null && !company.isBlank()) {
-            query.addCriteria(Criteria.where("company").regex(company, "i"));
-        }
-
-        // 4) 가격 범위 조건
+        // 3) 회사 조건, 4) 가격 조건, 5) 배송 조건 (기존과 동일하게 query에 criteria 추가)
+        if (company != null && !company.isBlank()) query.addCriteria(Criteria.where("company").regex(company, "i"));
         if (minPrice != null || maxPrice != null) {
             Criteria priceCriteria = Criteria.where("price");
-            if (minPrice != null) {
-                priceCriteria.gte(minPrice);
-            }
-            if (maxPrice != null) {
-                priceCriteria.lte(maxPrice);
-            }
+            if (minPrice != null) priceCriteria.gte(minPrice);
+            if (maxPrice != null) priceCriteria.lte(maxPrice);
             query.addCriteria(priceCriteria);
         }
-
-        // 5) 배송 방법 조건 추가
         if (deliveryType != null && !deliveryType.isBlank()) {
-            // 배송 방법이 정확히 일치하는 데이터 검색 (부분 일치가 필요하다면 .regex() 사용)
             query.addCriteria(Criteria.where("deliveryType").is(deliveryType));
         }
 
-        return mongoTemplate.find(query, Item.class);
-    }
+        // 페이징 전 전체 카운트 조회
+        long total = mongoTemplate.count(query, Item.class);
 
-    @Override
-    public List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds) {
-        // 1) 키워드 OR 조건
-        Criteria or = buildKeywordOrRegex(keyword == null ? "" : keyword);
+        // 페이징 설정 적용
+        query.with(pageable);
 
-        // 2) 카테고리 이름 → ObjectId 목록 매핑
-        List<ObjectId> catIds = List.of();
-        if (categoryIds != null && !categoryIds.isEmpty()) {
-            // categories 컬렉션에서 name IN으로 조회
-            List<Category> cats = mongoTemplate.find(
-                    Query.query(Criteria.where("name").in(categoryIds)),
-                    Category.class,
-                    "categories"
-            );
-
-            catIds = cats.stream()
-                    .map(c -> {
-                        Object idVal = c.getId(); // Category.id 타입이 ObjectId 또는 String일 수 있음
-                        return new ObjectId(idVal.toString());
-                    })
-                    .toList();
-        }
-
-        // 3) 매핑 결과가 없으면 결과 없음 처리(오탐 방지)
-        if (categoryIds != null && !categoryIds.isEmpty() && catIds.isEmpty()) {
-            return List.of(); // 선택한 카테고리 이름과 일치하는 id가 없음 [9]
-        }
-
-        // 4) 카테고리 조건 결합 여부 결정
-        if (catIds.isEmpty()) {
-            // 카테고리 미선택 → 키워드만 검색
-            return mongoTemplate.find(new Query(or), Item.class);
-        }
-
-        // 5) 키워드 OR ∧ category IN 결합
-        Criteria cat = Criteria.where("category").in(catIds);
-        Query q = new Query(new Criteria().andOperator(or, cat)); // $and 결합
-        return mongoTemplate.find(q, Item.class);
+        List<Item> items = mongoTemplate.find(query, Item.class);
+        return new PageImpl<>(items, pageable, total);
     }
 
     @Override

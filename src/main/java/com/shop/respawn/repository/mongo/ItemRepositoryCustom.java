@@ -12,15 +12,13 @@ import java.util.Optional;
 
 public interface ItemRepositoryCustom {
 
-    List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIdsHex);
-
     List<Item> fullTextSearch(String keyword);
 
     Page<ItemDto> findSimpleItemsBySellerId(String sellerId, String search, Pageable pageable);
 
     Page<ItemDto> findItemsByCategoryWithPageable(String category, Pageable pageable);
 
-    List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds, String company, Long minPrice, Long maxPrice, String deliveryType);
+    Page<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds, String company, Long minPrice, Long maxPrice, String deliveryType, Pageable pageable);
 
     List<Item> findPartialItemsByIds(List<String> itemIds);
 
