@@ -212,12 +212,48 @@ public class ItemController {
      * 아이템 검색 (키워드 + 카테고리 필터)
      * 예: GET /api/items/search/advanced?query=아이폰&categoryIds=phone&categoryIds=apple
      */
+//    @GetMapping("/search/advanced")
+//    public ResponseEntity<List<ItemDto>> searchItemsAdvanced(
+//            @RequestParam(name = "query", required = false) String query,
+//            @RequestParam(name = "categoryIds", required = false) List<String> categoryIds
+//    ) {
+//        List<Item> items = itemService.searchItemsByCategory(query, categoryIds);
+//        List<ItemDto> itemDtos = items.stream()
+//                .map(item -> new ItemDto(
+//                        item.getId(),
+//                        item.getName(),
+//                        item.getDescription(),
+//                        item.getDeliveryType(),
+//                        item.getDeliveryFee(),
+//                        item.getCompany(),
+//                        item.getCompanyNumber(),
+//                        item.getPrice(),
+//                        item.getStockQuantity(),
+//                        item.getSellerId(),
+//                        item.getImageUrl(),
+//                        item.getCategory(),
+//                        item.getStatus()
+//                ))
+//                .toList();
+//        return ResponseEntity.ok(itemDtos);
+//    }
+
+    /**
+     * 아이템 검색 (키워드 + 카테고리 + 가격 범위 필터)
+     * 예: GET /api/items/search/advanced?query=아이폰&categoryIds=phone&categoryIds=apple
+     */
     @GetMapping("/search/advanced")
     public ResponseEntity<List<ItemDto>> searchItemsAdvanced(
             @RequestParam(name = "query", required = false) String query,
-            @RequestParam(name = "categoryIds", required = false) List<String> categoryIds
+            @RequestParam(name = "categoryIds", required = false) List<String> categoryIds,
+            @RequestParam(name = "company", required = false) String company,
+            @RequestParam(name = "minPrice", required = false) Long minPrice,
+            @RequestParam(name = "maxPrice", required = false) Long maxPrice,
+            @RequestParam(name = "deliveryType", required = false) String deliveryType // 배송 방법 추가
     ) {
-        List<Item> items = itemService.searchItemsByCategory(query, categoryIds);
+        // 서비스 계층으로 deliveryType 전달
+        List<Item> items = itemService.searchItemsByCategory(query, categoryIds, company, minPrice, maxPrice, deliveryType);
+
         List<ItemDto> itemDtos = items.stream()
                 .map(item -> new ItemDto(
                         item.getId(),

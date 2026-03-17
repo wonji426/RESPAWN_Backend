@@ -251,4 +251,28 @@ public class ItemService {
                 item.getStatus()
         );
     }
+
+    /**
+     * 고급 검색 (키워드 + 카테고리 + 회사명 + 가격 범위 + 배송 방법)
+     */
+    public List<Item> searchItemsByCategory(String query,
+                                            List<String> categoryIds,
+                                            String company,
+                                            Long minPrice,
+                                            Long maxPrice,
+                                            String deliveryType) { // 배송 방법 추가
+
+        if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
+            throw new IllegalArgumentException("최소 가격이 최대 가격보다 클 수 없습니다.");
+        }
+
+        return itemRepository.searchByKeywordAndCategories(
+                query,
+                categoryIds,
+                company,
+                minPrice,
+                maxPrice,
+                deliveryType
+        );
+    }
 }

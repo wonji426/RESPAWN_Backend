@@ -20,6 +20,8 @@ public interface ItemRepositoryCustom {
 
     Page<ItemDto> findItemsByCategoryWithPageable(String category, Pageable pageable);
 
+    List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds, String company, Long minPrice, Long maxPrice, String deliveryType);
+
     List<Item> findPartialItemsByIds(List<String> itemIds);
 
     Optional<Category> findCategoryByName(String name);

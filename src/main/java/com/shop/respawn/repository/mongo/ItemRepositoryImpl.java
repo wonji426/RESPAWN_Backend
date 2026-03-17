@@ -39,6 +39,59 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
     }
 
     @Override
+    public List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds, String company, Long minPrice, Long maxPrice, String deliveryType) {
+        Query query = new Query();
+
+        // 1) 키워드 OR 조건
+        if (keyword != null && !keyword.isBlank()) {
+            query.addCriteria(buildKeywordOrRegex(keyword));
+        }
+
+        // 2) 카테고리 조건
+        if (categoryIds != null && !categoryIds.isEmpty()) {
+            List<Category> cats = mongoTemplate.find(
+                    Query.query(Criteria.where("name").in(categoryIds)),
+                    Category.class,
+                    "categories"
+            );
+
+            List<ObjectId> catIds = cats.stream()
+                    .map(c -> new ObjectId(c.getId().toString()))
+                    .toList();
+
+            if (catIds.isEmpty()) {
+                return List.of();
+            }
+            query.addCriteria(Criteria.where("category").in(catIds));
+        }
+
+        // 3) 회사(판매자) 조건
+        if (company != null && !company.isBlank()) {
+            query.addCriteria(Criteria.where("company").regex(company, "i"));
+        }
+
+        // 4) 가격 범위 조건
+        if (minPrice != null || maxPrice != null) {
+            Criteria priceCriteria = Criteria.where("price");
+            if (minPrice != null) {
+                priceCriteria.gte(minPrice);
+            }
+            if (maxPrice != null) {
+                priceCriteria.lte(maxPrice);
+            }
+            query.addCriteria(priceCriteria);
+        }
+
+        // 5) 배송 방법 조건 추가
+        if (deliveryType != null && !deliveryType.isBlank()) {
+            // 배송 방법이 정확히 일치하는 데이터 검색 (부분 일치가 필요하다면 .regex() 사용)
+            query.addCriteria(Criteria.where("deliveryType").is(deliveryType));
+        }
+
+        return mongoTemplate.find(query, Item.class);
+    }
+
+    @Override
     public List<Item> searchByKeywordAndCategories(String keyword, List<String> categoryIds) {
         // 1) 키워드 OR 조건
         Criteria or = buildKeywordOrRegex(keyword == null ? "" : keyword);
