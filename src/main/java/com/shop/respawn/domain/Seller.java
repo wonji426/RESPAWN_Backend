@@ -43,6 +43,7 @@ public class Seller extends BaseTimeEntity implements User {
 
     // 계정 상태 필드 추가
     @Embedded
+    @Builder.Default
     private AccountStatus accountStatus = new AccountStatus();
 
     //정적 팩토리 메서드
