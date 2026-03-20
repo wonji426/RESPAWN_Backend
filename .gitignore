@@ -22,7 +22,8 @@ mysql_data/
 
 ### IntelliJ IDEA ###
 application-db.yml
-application-security.yml
+application-dev.yml
+application-prod.yml
 .idea
 *.iws
 *.iml

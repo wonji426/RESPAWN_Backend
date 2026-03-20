@@ -1,11 +1,14 @@
 spring:
+  profiles:
+    active: dev
+
   servlet:
     multipart:
       max-file-size: 5MB
   jpa:
     open-in-view: true
   config:
-    import: classpath:application-db.yml, classpath:application-security.yml
+    import: classpath:application-db.yml
 
 server:
   servlet:
