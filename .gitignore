@@ -23,8 +23,6 @@ mysql_data/
 ### IntelliJ IDEA ###
 application-db.yml
 application-security.yml
-Dockerfile
-docker-compose.yml
 .idea
 *.iws
 *.iml
