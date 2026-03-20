@@ -11,3 +11,7 @@ server:
   servlet:
     session:
       persistent: false
+      cookie:
+        secure: false
+        http-only: true
+        same-site: lax

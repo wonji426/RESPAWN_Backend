@@ -385,7 +385,7 @@ public class UserService {
 
         // 임시 토큰 생성 (10분 만료)
         String token = UUID.randomUUID().toString();
-        String resetLink = "http://localhost:3000/reset-password?token=" + token;
+        String resetLink = "http://respawnstore.shop/reset-password?token=" + token;
 
         // Redis나 DB에 토큰 저장
         redisUtil.setDataExpire("reset-token:" + token, username, 10 * 60L);
@@ -404,7 +404,7 @@ public class UserService {
         }
 
         String token = UUID.randomUUID().toString();
-        String resetLink = "http://localhost:3000/reset-password?token=" + token;
+        String resetLink = "http://respawnstore.shop/reset-password?token=" + token;
 
         redisUtil.setDataExpire("reset-token:" + token, username, 30 * 60L);
 

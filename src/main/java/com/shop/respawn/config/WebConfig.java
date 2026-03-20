@@ -11,7 +11,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:3000")
+                .allowedOrigins("http://134.185.109.250", "http://respawnstore.shop", "http://www.respawnstore.shop")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);
@@ -20,6 +20,6 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("classpath:/static/uploads/"); // 또는 실제 업로드 경로
+                .addResourceLocations("file:/home/ubuntu/my-spring-app/uploads/"); // 또는 실제 업로드 경로
     }
 }

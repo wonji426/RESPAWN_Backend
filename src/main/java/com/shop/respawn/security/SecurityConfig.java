@@ -52,6 +52,7 @@ public class SecurityConfig {
                         .requestMatchers("/bring-me").authenticated()
                         .requestMatchers("/user/**").authenticated()
                         .requestMatchers("/admin/**").hasAnyRole("ADMIN")
+                        .requestMatchers("/uploads/**").permitAll()
                         .anyRequest().permitAll()
                 );
 
@@ -73,7 +74,7 @@ public class SecurityConfig {
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(principalOauth2UserService)
                         )
-                        .defaultSuccessUrl("http://localhost:3000/loginOk")
+                        .defaultSuccessUrl("http://respawnstore.shop/loginOk")
                         .successHandler(oAuth2SuccessHandler)
                         .failureHandler(oAuth2FailureHandler)
                         .permitAll()
@@ -127,7 +128,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true); // ★ withCredentials: true와 같이 사용하려면 꼭 true로 설정
-        config.setAllowedOrigins(List.of("http://localhost:3000")); // * 사용하지 말고 정확하게 지정
+        config.setAllowedOrigins(List.of("http://respawnstore.shop")); // * 사용하지 말고 정확하게 지정
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("*"));

@@ -45,7 +45,7 @@ public class OAuth2FailureHandler extends SimpleUrlAuthenticationFailureHandler 
               var data = %s;
               try {
                 if (window.opener && !window.opener.closed) {
-                  window.opener.postMessage(data, "http://localhost:3000");
+                  window.opener.postMessage(data, "http://respawnstore.shop");
                 }
               } catch(e) {}
               window.close();
