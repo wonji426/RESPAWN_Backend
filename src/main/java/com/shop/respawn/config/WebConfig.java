@@ -24,6 +24,6 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:/home/ubuntu/my-spring-app/uploads/"); // 또는 실제 업로드 경로
+                .addResourceLocations("file:/app/uploads/"); // 또는 실제 업로드 경로
     }
 }
