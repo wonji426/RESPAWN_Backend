@@ -7,8 +7,6 @@ spring:
       max-file-size: 5MB
   jpa:
     open-in-view: true
-  config:
-    import: classpath:application-db.yml
 
 server:
   servlet:

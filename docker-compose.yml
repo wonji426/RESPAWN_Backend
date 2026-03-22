@@ -37,6 +37,7 @@ services:
       - db
       - redis
     environment:
+      - SPRING_PROFILES_ACTIVE=prod
       # 위에서 설정한 'db' 서비스 이름을 호스트 주소로 사용합니다.
       - SPRING_DATASOURCE_URL=jdbc:mysql://db:3306/respawn?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       - SPRING_DATASOURCE_USERNAME=root

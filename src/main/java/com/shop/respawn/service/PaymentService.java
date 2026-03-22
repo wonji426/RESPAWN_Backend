@@ -15,6 +15,7 @@ import com.siot.IamportRestClient.response.IamportResponse;
 import com.siot.IamportRestClient.response.Prepare;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -67,12 +68,24 @@ public class PaymentService {
         HttpEntity<String> entity = new HttpEntity<>(headers);
 
         // 4. API 응답 받기 (Map 구조로 받아서 데이터 추출)
-        ResponseEntity<Map> responseEntity = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
-        Map<String, Object> body = (Map<String, Object>) responseEntity.getBody().get("response");
+        // Map 대신 Map<String, Object>로 타입을 명확히 지정 (Raw use 경고 해결)
+        ResponseEntity<Map<String, Object>> responseEntity = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                entity,
+                new ParameterizedTypeReference<>() {}
+        );
 
-        if (body == null) {
-            throw new RuntimeException("결제 정보를 가져올 수 없습니다. (Sandbox 포함 확인 필요)");
+        // getBody() 결과를 변수에 담고 null 체크 (NullPointerException 경고 해결)
+        Map<String, Object> responseBody = responseEntity.getBody();
+
+        if (responseBody == null || responseBody.get("response") == null) {
+            throw new RuntimeException("결제 정보를 가져올 수 없습니다. (응답이 비어 있음)");
         }
+
+        // 안전하게 내부 데이터를 가져옵니다.
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) responseBody.get("response");
 
         // 5. 데이터 추출 (기존 코드의 response.getResponse() 역할)
         Long amount = Long.valueOf(body.get("amount").toString());
