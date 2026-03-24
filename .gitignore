@@ -24,6 +24,7 @@ mysql_data/
 application-db.yml
 application-dev.yml
 application-prod.yml
+respawn-google-key.json
 .idea
 *.iws
 *.iml

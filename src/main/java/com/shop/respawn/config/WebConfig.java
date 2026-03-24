@@ -12,6 +12,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
+    @Value("${uploadPath-Sub}")
+    private String uploadPathSub;
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
@@ -24,6 +27,6 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:/app/uploads/"); // 또는 실제 업로드 경로
+                .addResourceLocations(uploadPathSub); // 또는 실제 업로드 경로
     }
 }
