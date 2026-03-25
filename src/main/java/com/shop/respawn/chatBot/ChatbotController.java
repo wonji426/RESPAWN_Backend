@@ -1,5 +1,6 @@
 package com.shop.respawn.chatBot;
 
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,14 +23,11 @@ public class ChatbotController {
 
     /**
      * 사용자의 질문을 받아 제미나이 답변을 반환합니다.
-     * 호출 예시: GET /api/chat/ask?message=게임용 키보드 추천해줘
+     * 호출 예시: POST /api/chat/ask?message=게임용 키보드 추천해줘
      */
-    @GetMapping("/ask")
-    public String ask(@RequestParam(name = "message") String message) {
-        if (message == null || message.trim().isEmpty()) {
-            return "질문을 입력해 주세요!";
-        }
-
+    @PostMapping("/ask")
+    public String ask(@Valid @RequestBody ChatRequest request) {
+        String message = request.getMessage();
         try {
             return chatService.getChatResponse(message);
         } catch (Exception e) {
