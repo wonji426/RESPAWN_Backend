@@ -1,10 +1,7 @@
 package com.shop.respawn.controller;
 
 import com.shop.respawn.dto.*;
-import com.shop.respawn.dto.review.CountReviewDto;
-import com.shop.respawn.dto.review.ReviewExistsDto;
-import com.shop.respawn.dto.review.ReviewRequestDto;
-import com.shop.respawn.dto.review.ReviewWithItemDto;
+import com.shop.respawn.dto.review.*;
 import com.shop.respawn.service.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -84,6 +81,16 @@ public class ReviewController {
             return ResponseEntity.ok(PageResponse.from(result));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/items/{itemId}/stats")
+    public ResponseEntity<ReviewStatsDto> getReviewStatsByItemId(@PathVariable String itemId) {
+        try {
+            ReviewStatsDto stats = reviewService.getItemReviewStats(itemId);
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
         }
     }
 

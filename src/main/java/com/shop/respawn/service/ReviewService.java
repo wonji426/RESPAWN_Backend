@@ -3,6 +3,7 @@ package com.shop.respawn.service;
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.*;
 import com.shop.respawn.dto.review.CountReviewDto;
+import com.shop.respawn.dto.review.ReviewStatsDto;
 import com.shop.respawn.dto.review.ReviewWithItemDto;
 import com.shop.respawn.repository.jpa.BuyerRepository;
 import com.shop.respawn.repository.jpa.OrderItemRepository;
@@ -379,5 +380,26 @@ public class ReviewService {
         // 페이징 없이 전체 개수 조회 (OrderItemRepository 커스텀 메서드 필요)
         long writableCount = orderItemRepository.countByBuyerIdAndDeliveryStatusAndIdNotIn(Long.parseLong(buyerId), DeliveryStatus.DELIVERED, reviewedOrderItemIds);
         return CountReviewDto.of(writableCount, writtenCount);
+    }
+
+    /**
+     * 특정 아이템의 리뷰 평균 점수와 총 개수 조회 (단독 API용)
+     */
+    @Transactional(readOnly = true)
+    public ReviewStatsDto getItemReviewStats(String itemId) {
+        ReviewStatsDto stats = reviewRepository.getReviewStatsByItemId(itemId);
+
+        // 리뷰가 하나도 없는 경우 기본값 0.0, 0 반환
+        if (stats == null) {
+            return new ReviewStatsDto(itemId, 0.0, 0);
+        }
+
+        // 소수점 첫째 자리까지 반올림 처리 (예: 4.56 -> 4.6)
+        double roundedAverage = Math.round(stats.getAverageRating() * 10) / 10.0;
+        stats.setAverageRating(roundedAverage);
+        // MongoDB _id가 itemId에 매핑되도록 확실히 세팅
+        stats.setItemId(itemId);
+
+        return stats;
     }
 }
