@@ -9,10 +9,11 @@ spring:
     open-in-view: true
 
 server:
+  forward-headers-strategy: native
   servlet:
     session:
       persistent: false
       cookie:
-        secure: false
+        secure: true
         http-only: true
         same-site: lax

@@ -13,6 +13,14 @@ java {
 	}
 }
 
+// ✅ 추가됨: 간접 의존성 강제 버전 고정 (constraints 문법 에러 완벽 해결)
+configurations.configureEach {
+	resolutionStrategy {
+		force 'com.squareup.retrofit2:retrofit:2.11.0'
+		force 'com.squareup.retrofit2:converter-gson:2.11.0'
+	}
+}
+
 configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
@@ -52,9 +60,9 @@ dependencies {
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 
-	//Querydsl 추가
-	implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
-	annotationProcessor "com.querydsl:querydsl-apt:${dependencyManagement.importedProperties['querydsl.version']}:jakarta"
+	// Querydsl (현재 최신 버전)
+	implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
+	annotationProcessor "com.querydsl:querydsl-apt:5.1.0:jakarta"
 	annotationProcessor "jakarta.annotation:jakarta.annotation-api"
 	annotationProcessor "jakarta.persistence:jakarta.persistence-api"
 

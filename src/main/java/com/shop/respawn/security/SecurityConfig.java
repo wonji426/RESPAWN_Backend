@@ -53,20 +53,20 @@ public class SecurityConfig {
          */
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/bring-me").authenticated()
-                        .requestMatchers("/user/**").authenticated()
-                        .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/bring-me").authenticated()
+                        .requestMatchers("/api/user/**").authenticated()
+                        .requestMatchers("/api/uploads/**").permitAll()
                         .anyRequest().permitAll()
                 );
 
         http //일반 로그인
                 .formLogin(auth -> auth
                         .loginPage("/login")
-                        .loginProcessingUrl("/loginProc")
+                        .loginProcessingUrl("/api/loginProc")
                         .usernameParameter("username")
                         .passwordParameter("password")
-                        .defaultSuccessUrl("/loginOk")
+                        .defaultSuccessUrl("/api/loginOk")
                         .successHandler(customAuthenticationSuccessHandler) // 성공 핸들러
                         .failureHandler(customAuthenticationFailureHandler) // 실패 핸들러
                         .permitAll()
@@ -75,6 +75,14 @@ public class SecurityConfig {
         http
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage("/login")
+                        // 프론트에서 소셜 로그인 창을 띄울 때 쓸 시작 주소 변경
+                        .authorizationEndpoint(endpoint -> endpoint
+                                .baseUri("/api/oauth2/authorization")
+                        )
+                        // 구글/카카오가 로그인 코드를 던져줄 리디렉트 주소 변경
+                        .redirectionEndpoint(endpoint -> endpoint
+                                .baseUri("/api/login/oauth2/code/*")
+                        )
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(principalOauth2UserService)
                         )
@@ -87,9 +95,9 @@ public class SecurityConfig {
 
         http //로그아웃
                 .logout(logout -> logout
-                        .logoutUrl("/logout")                           // 로그아웃 요청 URL (기본값: "/logout")
+                        .logoutUrl("/api/logout")                           // 로그아웃 요청 URL (기본값: "/logout")
                         .logoutSuccessHandler(customLogoutSuccessHandler)
-                        .logoutSuccessUrl("/logoutOk")                  // 로그아웃 성공 후 리다이렉트 URL (기본값: "/login?logout")
+                        .logoutSuccessUrl("/api/logoutOk")                  // 로그아웃 성공 후 리다이렉트 URL (기본값: "/login?logout")
                         .invalidateHttpSession(true)                      // 세션 무효화 (기본값: true)
                         .deleteCookies("JSESSIONID")     // 쿠키 삭제
                 );

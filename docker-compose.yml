@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    depends_on:
+      - frontend
+      - app
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
   # 1. 데이터베이스 서비스 (MySQL)
   db:
     image: mysql:8.0
@@ -55,7 +75,9 @@ services:
   frontend:
     build: ./frontend # ⭐ frontend 폴더 안의 Dockerfile을 사용
     container_name: react-frontend
-    ports:
-      - "80:80"       # 브라우저에서 'IP주소'만 쳐서 들어오려면 80번 포트 권장
+    expose:
+      - "80"
+#    ports:
+#      - "80:80"       # 브라우저에서 'IP주소'만 쳐서 들어오려면 80번 포트 권장
     depends_on:
       - app           # 백엔드가 먼저 실행되도록 설정
