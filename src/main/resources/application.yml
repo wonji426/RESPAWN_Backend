@@ -1,13 +1,19 @@
 spring:
+  profiles:
+    active: dev
+
   servlet:
     multipart:
       max-file-size: 5MB
   jpa:
     open-in-view: true
-  config:
-    import: classpath:application-db.yml, classpath:application-security.yml
 
 server:
+  forward-headers-strategy: native
   servlet:
     session:
       persistent: false
+      cookie:
+        secure: true
+        http-only: true
+        same-site: lax

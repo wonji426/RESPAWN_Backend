@@ -51,6 +51,7 @@ public class PointController {
     public ResponseEntity<?> getMyActiveTotalPoints(Authentication authentication) {
         try {
             Long buyerId = getUserIdFromAuthentication(authentication);
+            ledgerPointService.expireBuyer(buyerId);
             long active = ledgerPointService.getActive(buyerId);
             return ResponseEntity.ok(active);
         } catch (RuntimeException e) {

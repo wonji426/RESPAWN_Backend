@@ -1,13 +1,18 @@
 package com.shop.respawn.controller;
 
-import com.shop.respawn.dto.*;
+import com.shop.respawn.domain.RefundStatus;
+import com.shop.respawn.dto.PageResponse;
 import com.shop.respawn.dto.order.*;
+import com.shop.respawn.dto.refund.RefundRequest;
+import com.shop.respawn.dto.refund.RefundResponse;
 import com.shop.respawn.dto.user.SellerOrderDetailDto;
 import com.shop.respawn.dto.user.SellerOrderDto;
-import com.shop.respawn.exception.ApiMessage;
 import com.shop.respawn.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -17,7 +22,6 @@ import java.util.Map;
 
 import static com.shop.respawn.domain.RefundStatus.*;
 import static com.shop.respawn.util.AuthenticationUtil.*;
-
 
 @RestController
 @RequestMapping("/api/orders")
@@ -125,16 +129,18 @@ public class OrderController {
     }
 
     /**
-     * 로그인한 구매자의 주문 내역 조회 API
+     * 로그인한 구매자의 주문 내역 조회
      */
     @GetMapping("/history")
-    public ResponseEntity<?> getOrderHistory(Authentication authentication) {
-        try {
-            Long buyerId = getUserIdFromAuthentication(authentication);
-            return ResponseEntity.ok(orderService.getOrderHistory(buyerId));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<PageResponse<OrderHistoryDto>> getOrderHistory(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Long buyerId = getUserIdFromAuthentication(authentication);
+        Pageable pageable = PageRequest.of(page, size);
+        Page<OrderHistoryDto> orderHistory = orderService.getOrderHistory(buyerId, pageable);
+        return ResponseEntity.ok(PageResponse.from(orderHistory));
     }
 
     /**
@@ -187,10 +193,19 @@ public class OrderController {
     }
 
     @GetMapping("/history/recent-month")
-    public ResponseEntity<List<OrderHistoryDto>> getRecentMonthOrders(Authentication authentication) {
-        Long buyerId = getUserIdFromAuthentication(authentication);
-        List<OrderHistoryDto> orders = orderService.getRecentMonthOrders(buyerId);
-        return ResponseEntity.ok(orders);
+    public ResponseEntity<PageResponse<OrderHistoryDto>> getRecentMonthOrders(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        try {
+            Long buyerId = getUserIdFromAuthentication(authentication);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<OrderHistoryDto> orders = orderService.getRecentMonthOrders(buyerId, pageable);
+            return ResponseEntity.ok(PageResponse.from(orders));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
+        }
     }
 
     /**
@@ -217,7 +232,6 @@ public class OrderController {
             @PathVariable Long orderItemId,
             @RequestBody OrderRefundRequestDto refundDto
     ) {
-
         try {
             Long buyerId = getUserIdFromAuthentication(authentication);
             orderService.requestRefund(orderId, orderItemId, buyerId, refundDto.getReason(), refundDto.getDetail());
@@ -231,13 +245,17 @@ public class OrderController {
      * 요청한 환불 목록 보기
      */
     @GetMapping("/refund-requests")
-    public ResponseEntity<?> getRefundRequests(Authentication authentication) {
+    public ResponseEntity<PageResponse<OrderHistoryDto>> getRefundRequests(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
             Long buyerId = getUserIdFromAuthentication(authentication);
-            List<OrderHistoryDto> refundRequests = orderService.getRefundRequestedItems(buyerId);
-            return ResponseEntity.ok(refundRequests);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<OrderHistoryDto> refundRequests = orderService.getRefundRequestedItems(buyerId, pageable);
+            return ResponseEntity.ok(PageResponse.from(refundRequests));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
         }
     }
 
@@ -245,14 +263,19 @@ public class OrderController {
      * 환불 요청 판매자 확인
      */
     @GetMapping("/seller/refund-requests")
-    public ResponseEntity<?> getRefundRequestsOfSeller(Authentication authentication) {
+    public ResponseEntity<PageResponse<RefundRequest>> getRefundRequestsOfSeller(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            List<RefundRequestDetailDto> refundRequests = orderService.getRefundRequestsByStatus(sellerId, REQUESTED);
-            return ResponseEntity.ok(refundRequests);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<RefundRequest> result = orderService.getRefundRequestsByStatus(sellerId, RefundStatus.REQUESTED, pageable);
+            return ResponseEntity.ok(PageResponse.from(result));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
         }
+
     }
 
     /**
@@ -262,13 +285,12 @@ public class OrderController {
     public ResponseEntity<?> completeRefund(
             Authentication  authentication,
             @PathVariable Long orderItemId) {
-
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            String content = orderService.completeRefund(orderItemId, sellerId);
-            return ResponseEntity.ok(ApiMessage.of("success", content));
+            RefundResponse RefundResponse = orderService.completeRefund(orderItemId, sellerId);
+            return ResponseEntity.ok(RefundResponse);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
@@ -276,13 +298,17 @@ public class OrderController {
      * 판매자 환불 요청 완료 조회
      */
     @GetMapping("/seller/refund-completed")
-    public ResponseEntity<?> getCompletedRefunds(Authentication authentication) {
+    public ResponseEntity<?> getCompletedRefunds(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            List<RefundRequestDetailDto> completedRefunds = orderService.getRefundRequestsByStatus(sellerId, REFUNDED);
-            return ResponseEntity.ok(completedRefunds);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<RefundRequest> completedRefunds = orderService.getRefundRequestsByStatus(sellerId, REFUNDED, pageable);
+            return ResponseEntity.ok(PageResponse.from(completedRefunds));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
         }
     }
 
@@ -290,13 +316,18 @@ public class OrderController {
      * 판매자의 item의 주문 기록 조회
      */
     @GetMapping("/seller/orders")
-    public ResponseEntity<List<SellerOrderDto>> getSellerOrders(Authentication authentication) {
+    public ResponseEntity<PageResponse<SellerOrderDto>> getSellerOrders(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String itemId) {
         try {
             Long sellerId = getUserIdFromAuthentication(authentication);
-            List<SellerOrderDto> orders  = orderService.getSellerOrders(sellerId);
-            return ResponseEntity.ok(orders);
+            Pageable pageable = PageRequest.of(page, size);
+            Page<SellerOrderDto> orders = orderService.getSellerOrders(sellerId, pageable, itemId);
+            return ResponseEntity.ok(PageResponse.from(orders));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));
         }
     }
 

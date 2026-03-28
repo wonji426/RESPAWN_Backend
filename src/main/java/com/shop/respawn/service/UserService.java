@@ -41,8 +41,12 @@ public class UserService {
     private final BuyerRepository buyerRepository;
     private final SellerRepository sellerRepository;
     private final AdminRepository adminRepository;
+
     private final EmailService emailService;
     private final SmsService smsService;
+    private final LedgerPointService ledgerPointService;
+    private final CouponService couponService;
+
     private final BCryptPasswordEncoder encoder;
     private final RedisUtil redisUtil;
     enum Channel { EMAIL, PHONE }
@@ -64,11 +68,13 @@ public class UserService {
             Buyer buyer = Buyer.createBuyer(name, username, password, email, phoneNumber, "local", Role.ROLE_USER, Grade.BASIC);
             buyer.renewExpiryDate();
             buyerRepository.save(buyer);
+            couponService.newBuyerCoupon(buyer.getId());
         } else if (userType.equals("seller")){
             Seller seller = Seller.createSeller(name, username, company, companyNumber, password, email, phoneNumber, Role.ROLE_SELLER);
             seller.renewExpiryDate();
             sellerRepository.save(seller);
         }
+
     }
 
     /**
@@ -379,7 +385,7 @@ public class UserService {
 
         // 임시 토큰 생성 (10분 만료)
         String token = UUID.randomUUID().toString();
-        String resetLink = "http://localhost:3000/reset-password?token=" + token;
+        String resetLink = "http://respawnstore.shop/reset-password?token=" + token;
 
         // Redis나 DB에 토큰 저장
         redisUtil.setDataExpire("reset-token:" + token, username, 10 * 60L);
@@ -398,7 +404,7 @@ public class UserService {
         }
 
         String token = UUID.randomUUID().toString();
-        String resetLink = "http://localhost:3000/reset-password?token=" + token;
+        String resetLink = "http://respawnstore.shop/reset-password?token=" + token;
 
         redisUtil.setDataExpire("reset-token:" + token, username, 30 * 60L);
 
@@ -761,12 +767,12 @@ public class UserService {
             throw new RuntimeException("인증 필요");
         }
         Long buyerId = buyerRepository.findOnlyBuyerIdByUsername(authentication.getName()); // 또는 username으로 buyerId 조회
-
         Long active = buyerRepository.findActivePoint(buyerId);
         Long couponCnt = buyerRepository.countUsableCoupons(buyerId, LocalDateTime.now());
         var grade = buyerRepository.findBuyerGrade(buyerId);
+        long expirePoint = ledgerPointService.expireBuyer(buyerId);
 
-        return new MyPageMiniResponse(active, couponCnt, grade);
+        return new MyPageMiniResponse(active, couponCnt, grade, expirePoint);
     }
 
 }

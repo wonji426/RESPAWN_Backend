@@ -39,10 +39,10 @@ public class OrderHistoryItemDto {
         dto.setRefundStatus(orderItem.getRefundStatus().name());
         dto.setDeliveryStatus(orderItem.getDelivery().getStatus());
 
-        if(orderItem.getRefundRequest() != null) {
-            dto.setRefundReason(orderItem.getRefundRequest().getRefundReason());
-            dto.setRefundDetail(orderItem.getRefundRequest().getRefundDetail());
-            dto.setRequestedAt(orderItem.getRefundRequest().getRequestedAt());
+        if(orderItem.getRefund() != null) {
+            dto.setRefundReason(orderItem.getRefund().getRefundReason());
+            dto.setRefundDetail(orderItem.getRefund().getRefundDetail());
+            dto.setRequestedAt(orderItem.getRefund().getRequestedAt());
         }
 
         return dto;

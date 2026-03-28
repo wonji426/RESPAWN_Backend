@@ -9,11 +9,11 @@ import java.time.LocalDateTime;
 import static jakarta.persistence.FetchType.*;
 
 @Entity
-@Table(name = "refund_request")
+@Table(name = "refund")
 @Getter @Setter
-public class RefundRequest {
+public class Refund {
     @Id @GeneratedValue
-    @Column(name = "refund_request_id")
+    @Column(name = "refund_id")
     private Long id;
 
     @ManyToOne(fetch = LAZY)

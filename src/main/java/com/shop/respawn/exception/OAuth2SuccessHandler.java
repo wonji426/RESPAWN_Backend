@@ -34,7 +34,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         var buyer = buyerRepository.findByUsername(username);
         if (isIncompleteBuyer(buyer)) {
             String missing = buildMissingCsv(buyer);
-            String parentUrl = "http://localhost:3000/profile/complete?missing=" +
+            String parentUrl = "https://respawnstore.shop/profile/complete?missing=" +
                     URLEncoder.encode(missing, StandardCharsets.UTF_8);
             HttpSession session = request.getSession();
             session.setAttribute("userId", buyer.getId());
@@ -44,7 +44,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         // 3) 누락 없으면 기존 목적지 처리(예: /loginOk로 세션 동기화)
         // SavedRequest를 쓰려면 SavedRequestAwareAuthenticationSuccessHandler 유사 로직을 적용
-        redirectParentAndClose(response, "http://localhost:3000/loginOk");
+        redirectParentAndClose(response, "https://respawnstore.shop/api/loginOk");
     }
 
     private boolean isIncompleteBuyer(Buyer b) {

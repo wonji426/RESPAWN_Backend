@@ -3,6 +3,7 @@ package com.shop.respawn.security;
 import com.shop.respawn.exception.*;
 import com.shop.respawn.security.oauth.PrincipalOauth2UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -34,6 +35,9 @@ public class SecurityConfig {
     private final OAuth2FailureHandler oAuth2FailureHandler;
     private final CustomLogoutSuccessHandler customLogoutSuccessHandler;
 
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
@@ -49,19 +53,20 @@ public class SecurityConfig {
          */
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/bring-me").authenticated()
-                        .requestMatchers("/user/**").authenticated()
-                        .requestMatchers("/admin/**").hasAnyRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/bring-me").authenticated()
+                        .requestMatchers("/api/user/**").authenticated()
+                        .requestMatchers("/api/uploads/**").permitAll()
                         .anyRequest().permitAll()
                 );
 
         http //일반 로그인
                 .formLogin(auth -> auth
                         .loginPage("/login")
-                        .loginProcessingUrl("/loginProc")
+                        .loginProcessingUrl("/api/loginProc")
                         .usernameParameter("username")
                         .passwordParameter("password")
-                        .defaultSuccessUrl("/loginOk")
+                        .defaultSuccessUrl("/api/loginOk")
                         .successHandler(customAuthenticationSuccessHandler) // 성공 핸들러
                         .failureHandler(customAuthenticationFailureHandler) // 실패 핸들러
                         .permitAll()
@@ -70,10 +75,18 @@ public class SecurityConfig {
         http
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage("/login")
+                        // 프론트에서 소셜 로그인 창을 띄울 때 쓸 시작 주소 변경
+                        .authorizationEndpoint(endpoint -> endpoint
+                                .baseUri("/api/oauth2/authorization")
+                        )
+                        // 구글/카카오가 로그인 코드를 던져줄 리디렉트 주소 변경
+                        .redirectionEndpoint(endpoint -> endpoint
+                                .baseUri("/api/login/oauth2/code/*")
+                        )
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(principalOauth2UserService)
                         )
-                        .defaultSuccessUrl("http://localhost:3000/loginOk")
+                        .defaultSuccessUrl(frontendUrl + "/loginOk")
                         .successHandler(oAuth2SuccessHandler)
                         .failureHandler(oAuth2FailureHandler)
                         .permitAll()
@@ -82,9 +95,9 @@ public class SecurityConfig {
 
         http //로그아웃
                 .logout(logout -> logout
-                        .logoutUrl("/logout")                           // 로그아웃 요청 URL (기본값: "/logout")
+                        .logoutUrl("/api/logout")                           // 로그아웃 요청 URL (기본값: "/logout")
                         .logoutSuccessHandler(customLogoutSuccessHandler)
-                        .logoutSuccessUrl("/logoutOk")                  // 로그아웃 성공 후 리다이렉트 URL (기본값: "/login?logout")
+                        .logoutSuccessUrl("/api/logoutOk")                  // 로그아웃 성공 후 리다이렉트 URL (기본값: "/login?logout")
                         .invalidateHttpSession(true)                      // 세션 무효화 (기본값: true)
                         .deleteCookies("JSESSIONID")     // 쿠키 삭제
                 );
@@ -127,7 +140,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true); // ★ withCredentials: true와 같이 사용하려면 꼭 true로 설정
-        config.setAllowedOrigins(List.of("http://localhost:3000")); // * 사용하지 말고 정확하게 지정
+        config.setAllowedOrigins(List.of(frontendUrl)); // * 사용하지 말고 정확하게 지정
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("*"));

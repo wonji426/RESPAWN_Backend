@@ -1,8 +1,9 @@
 package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
-import com.shop.respawn.dto.*;
+import com.shop.respawn.dto.refund.RefundRequest;
 import com.shop.respawn.dto.order.*;
+import com.shop.respawn.dto.refund.RefundResponse;
 import com.shop.respawn.dto.user.SellerOrderDetailDto;
 import com.shop.respawn.dto.user.SellerOrderDto;
 import com.shop.respawn.repository.jpa.*;
@@ -11,6 +12,9 @@ import com.shop.respawn.util.RedisUtil;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,7 +23,10 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.shop.respawn.dto.RefundRequestDetailDto.*;
+import static com.shop.respawn.dto.refund.RefundRequest.*;
+import static java.util.Collections.reverseOrder;
+import static java.util.Comparator.comparing;
+import static java.util.Comparator.nullsLast;
 
 @Slf4j
 @Service
@@ -436,38 +443,100 @@ public class OrderService {
     /**
      * 구매자의 주문 내역을 최신순으로 조회하여 DTO 리스트로 반환
      */
-    public List<OrderHistoryDto> getOrderHistory(Long buyerId) {
-        // 1. 주문 목록 조회
-        List<Order> orders = orderRepository.findByBuyer_IdOrderByOrderDateDesc(buyerId);
+    public Page<OrderHistoryDto> getOrderHistory(Long buyerId, Pageable pageable) {
+        // 1) 페이징 조건으로 주문 목록 조회
+        List<Order> orders = orderRepository.findOrdersByBuyerOrderByDateDesc(buyerId, pageable);
 
-        // 2. 반환할 DTO 리스트 준비
-        List<OrderHistoryDto> orderHistoryDtos = new ArrayList<>();
+        // 2) 전체 주문 개수 조회 (페이지 사이즈 등과 별개)
+        long total = orderRepository.countOrdersByBuyer(buyerId);
 
-        for (Order order : orders) {
-            // 2-1. 해당 주문의 아이템 목록 조회 및 DTO 변환
-            List<OrderHistoryItemDto> itemDtos = new ArrayList<>();
-
-            for (OrderItem orderItem : order.getOrderItems()) {
-                try {
-                    // MongoDB에서 Item 정보 조회
-                    Item item = itemService.getItemById(orderItem.getItemId());
-
-                    // DTO 변환 후 리스트에 추가
-                    OrderHistoryItemDto itemDto = OrderHistoryItemDto.from(orderItem, item);
-                    itemDtos.add(itemDto);
-                } catch (Exception e) {
-                    log.error("아이템 조회 중 오류 발생: orderItemId={}, itemId={}",
-                            orderItem.getId(), orderItem.getItemId(), e); // 혹은 로그 찍기
-                    // 필요하면 기본값 세팅 or 예외 무시
-                }
-            }
-
-            // 2-2. 주문 단위 DTO 생성 후 최종 리스트에 추가
-            OrderHistoryDto orderDto = new OrderHistoryDto(order, itemDtos);
-            orderHistoryDtos.add(orderDto);
+        if (orders.isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
-        return orderHistoryDtos;
+        // 3) 주문 ID 리스트 추출
+        List<Long> orderIds = orders.stream()
+                .map(Order::getId)
+                .toList();
+
+        // 4) 주문 아이템 일괄 조회
+        List<OrderItem> orderItems = orderItemRepository.findOrderItemsByOrderIds(orderIds);
+
+        // 5) 주문별 주문 아이템 그룹핑
+        Map<Long, List<OrderItem>> orderItemsByOrderId = orderItems.stream()
+                .collect(Collectors.groupingBy(oi -> oi.getOrder().getId()));
+
+        // 6) 상품 아이디 추출 후 MongoDB에서 일괄 조회
+        List<String> itemIds = orderItems.stream()
+                .map(OrderItem::getItemId)
+                .distinct()
+                .toList();
+
+        return getOrderHistoryDtos(pageable, itemIds, orders, orderItemsByOrderId, total);
+    }
+
+    /**
+     * 최근 한달 주문 목록
+     */
+    @Transactional(readOnly = true)
+    public Page<OrderHistoryDto> getRecentMonthOrders(Long buyerId, Pageable pageable) {
+        LocalDateTime to = LocalDateTime.now();
+        LocalDateTime from = to.minusMonths(1);
+
+        // 1) 최근 한달간 주문 Page 조회 (주문만 페이징, 정렬 최신순)
+        List<Order> orders = orderRepository.findPaidOrdersByBuyerAndDateRange(buyerId, from, to, pageable);
+
+        // 2) 전체 주문 개수 조회 (같은 조건으로 카운트)
+        long total = orderRepository.countPaidOrdersByBuyerAndDateRange(buyerId, from, to);
+
+        if (orders.isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
+        // 3) 조회된 주문 Id 리스트
+        List<Long> orderIds = orders.stream().map(Order::getId).collect(Collectors.toList());
+
+        // 4) OrderItem들을 일괄 조회 (batch fetch)
+        List<OrderItem> orderItems = orderItemRepository.findOrderItemsByOrderIds(orderIds);
+
+        // 5) 주문별 주문아이템 그룹핑
+        Map<Long, List<OrderItem>> orderItemsByOrderId = orderItems.stream()
+                .collect(Collectors.groupingBy(oi -> oi.getOrder().getId()));
+
+        // 6) 주문아이템의 상품아이디 목록 가져오기 및 MongoDB에서 일괄 조회
+        List<String> itemIds = orderItems.stream()
+                .map(OrderItem::getItemId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        return getOrderHistoryDtos(pageable, itemIds, orders, orderItemsByOrderId, total);
+    }
+
+    private PageImpl<OrderHistoryDto> getOrderHistoryDtos(
+            Pageable pageable, List<String> itemIds, List<Order> orders, Map<Long, List<OrderItem>> orderItemsByOrderId, long total) {
+        List<Item> items = itemService.getPartialItemsByIds(itemIds);
+        Map<String, Item> itemMap = items.stream()
+                .collect(Collectors.toMap(Item::getId, i -> i));
+
+        // 7) DTO 변환 및 결과 리스트 구성
+        List<OrderHistoryDto> content = new ArrayList<>();
+
+        for (Order order : orders) {
+            List<OrderItem> itemsForOrder = orderItemsByOrderId.getOrDefault(order.getId(), List.of());
+            List<OrderHistoryItemDto> itemDtos = new ArrayList<>();
+            for (OrderItem oi : itemsForOrder) {
+                Item item = itemMap.get(oi.getItemId());
+                if (item != null) {
+                    OrderHistoryItemDto dto = OrderHistoryItemDto.from(oi, item);
+                    itemDtos.add(dto);
+                } else {
+                    log.info("상품 정보가 없음: itemId={}", oi.getItemId());
+                }
+            }
+            content.add(new OrderHistoryDto(order, itemDtos));
+        }
+
+        return new PageImpl<>(content, pageable, total);
     }
 
     /**
@@ -489,42 +558,6 @@ public class OrderService {
                 }).toList();
 
         return new OrderHistoryDto(order, itemDtos);
-    }
-
-    @Transactional(readOnly = true)
-    public List<OrderHistoryDto> getRecentMonthOrders(Long buyerId) {
-
-        LocalDateTime to = LocalDateTime.now();
-        LocalDateTime from = to.minusMonths(1);
-
-        // 1) 한달 내 주문 헤더 Top-N (예: 100건 상한)
-        List<Order> orders = orderRepository.findRecentPaidOrdersByBuyer(buyerId, from, to, 100);
-
-        if (orders.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        // 2) 주문아이디 목록으로 OrderItem 일괄 로딩 (배치 조회)
-        List<Long> orderIds = orders.stream().map(Order::getId).toList();
-
-        // OrderItem을 주문별로 묶기 위한 맵
-        Map<Long, List<OrderItem>> itemsByOrderId = orderItemRepository.findAllByOrder_IdIn(orderIds)
-                .stream()
-                .collect(Collectors.groupingBy(oi -> oi.getOrder().getId()));
-
-        // 3) DTO 변환: Mongo Item은 서비스 통해 조회
-        return orders.stream()
-                .map(o -> {
-                    List<OrderItem> orderItems = itemsByOrderId.getOrDefault(o.getId(), List.of());
-                    List<OrderHistoryItemDto> itemDtos = orderItems.stream()
-                            .map(oi -> {
-                                Item item = itemService.getItemById(oi.getItemId());
-                                return OrderHistoryItemDto.from(oi, item);
-                            })
-                            .toList();
-                    return new OrderHistoryDto(o, itemDtos);
-                })
-                .toList();
     }
 
     /**
@@ -666,13 +699,13 @@ public class OrderService {
             throw new RuntimeException("이미 환불 요청 또는 완료된 아이템입니다.");
         }
 
-        RefundRequest refundRequest = new RefundRequest();
-        refundRequest.setOrderItem(orderItem);
-        refundRequest.setBuyer(buyer);
-        refundRequest.setRefundReason(reason);
-        refundRequest.setRefundDetail(detail);
-        refundRequest.setRequestedAt(LocalDateTime.now());
-        orderItem.setRefundRequest(refundRequest);
+        Refund refund = new Refund();
+        refund.setOrderItem(orderItem);
+        refund.setBuyer(buyer);
+        refund.setRefundReason(reason);
+        refund.setRefundDetail(detail);
+        refund.setRequestedAt(LocalDateTime.now());
+        orderItem.setRefund(refund);
 
         // 환불 요청 상태로 변경
         orderItem.setRefundStatus(RefundStatus.REQUESTED);
@@ -684,100 +717,123 @@ public class OrderService {
      * 요청한 환불 목록 보기
      */
     @Transactional(readOnly = true)
-    public List<OrderHistoryDto> getRefundRequestedItems(Long buyerId) {
-        // 해당 buyer의 모든 주문을 가져온다
-        List<Order> orders = orderRepository.findByBuyer_IdOrderByOrderDateDesc(buyerId);
+    public Page<OrderHistoryDto> getRefundRequestedItems(Long buyerId, Pageable pageable) {
+        Page<OrderItem> pageItems = orderItemRepository.findRefundItemsByBuyer(buyerId, pageable);
 
-        List<OrderHistoryDto> refundRequestedOrders = new ArrayList<>();
-
-        for (Order order : orders) {
-            // 주문 아이템 중 환불 요청 또는 완료 상태인 아이템 필터링
-            List<OrderItem> refundItems = order.getOrderItems().stream()
-                    .filter(oi -> oi.getRefundStatus() == RefundStatus.REQUESTED || oi.getRefundStatus() == RefundStatus.REFUNDED)
-                    .toList();
-
-            if (!refundItems.isEmpty()) {
-                // 각 아이템에 대해 Item 정보 조회 및 DTO 변환
-                List<OrderHistoryItemDto> itemDtos = new ArrayList<>();
-                for (OrderItem oi : refundItems) {
-                    try {
-                        Item item = itemService.getItemById(oi.getItemId());
-                        OrderHistoryItemDto dto = OrderHistoryItemDto.from(oi, item);
-                        itemDtos.add(dto);
-                    } catch (Exception e) {
-                        // 예외 로깅 및 무시 또는 기본값 처리
-                        log.error("환불 내역 아이템 조회 중 오류: itemId={}", oi.getItemId(), e);
-                    }
-                }
-                refundRequestedOrders.add(new OrderHistoryDto(order, itemDtos));
-            }
+        if (pageItems.isEmpty()) {
+            return Page.empty(pageable);
         }
 
-        refundRequestedOrders.sort(Comparator.comparing(
-                dto -> dto.getItems().stream()
-                        .map(OrderHistoryItemDto::getRequestedAt)
-                        .filter(Objects::nonNull)
-                        .max(LocalDateTime::compareTo)
-                        .orElse(LocalDateTime.MIN),
-                Comparator.reverseOrder()
-        ));
+        List<OrderItem> content = pageItems.getContent();
 
-        return refundRequestedOrders;
+        // 1) 아이템/주문 키 수집
+        List<String> itemIds = content.stream()
+                .map(OrderItem::getItemId)
+                .distinct()
+                .toList();
+
+        // 2) Mongo에서 필요한 필드만 배치 조회 (ItemService 내부에서 partial 조회 구현 재사용)
+        Map<String, Item> itemMap = itemService.getPartialItemsByIds(itemIds).stream()
+                .collect(Collectors.toMap(Item::getId, it -> it));
+
+        // 3) 주문별 그룹핑 (괄호 누락, getId 해결)
+        Map<Long, List<OrderItem>> byOrderId = content.stream()
+                .collect(Collectors.groupingBy(oi -> oi.getOrder().getId()));
+
+        // 4) DTO 변환 (Optional.get() 제거)
+        List<OrderHistoryDto> dtos = byOrderId.entrySet().stream()
+                .map(entry -> {
+                    Long orderId = entry.getKey();
+                    List<OrderItem> itemsOfOrder = entry.getValue();
+
+                    Order orderRef = itemsOfOrder.stream()
+                            .findFirst()
+                            .map(OrderItem::getOrder)
+                            .orElseThrow(() -> new IllegalStateException("Order not found for orderId=" + orderId));
+
+                    List<OrderHistoryItemDto> itemDtos = itemsOfOrder.stream()
+                            .map(oi -> {
+                                Item item = itemMap.get(oi.getItemId());
+                                return OrderHistoryItemDto.from(oi, item); // 내부에서 null 방어
+                            })
+                            .toList();
+
+                    return new OrderHistoryDto(orderRef, itemDtos);
+                })
+                .toList();
+
+        return new PageImpl<>(dtos, pageable, pageItems.getTotalElements());
     }
 
     /**
      * 판매자 환불 요청 및 완료 목록 조회
      */
     @Transactional(readOnly = true)
-    public List<RefundRequestDetailDto> getRefundRequestsByStatus(Long sellerId, RefundStatus refundStatus) {
-        // 1. 판매자가 등록한 상품 id 목록 조회
-        List<Item> sellerItems = itemService.getItemsBySellerId(String.valueOf(sellerId));
+    public Page<RefundRequest> getRefundRequestsByStatus(
+            Long sellerId, RefundStatus refundStatus, Pageable pageable) {
+
+        // 1) 판매자 아이템 id 집합 (Mongo)
+        List<Item> sellerItems =
+                itemService.getItemsBySellerId(String.valueOf(sellerId));
         Set<String> sellerItemIds = sellerItems.stream()
                 .map(Item::getId)
                 .collect(Collectors.toSet());
 
-        // 2. 모든 주문 조회 (실제 운영 환경에선 조건절로 최적화 권장)
-        List<Order> allOrders = orderRepository.findAll();
-
-        // 3. 결과 담을 리스트 초기화
-        List<RefundRequestDetailDto> result = new ArrayList<>();
-
-        // 4. 각 주문별로 주문자(buyer), 주문 아이템 순회
-        for (Order order : allOrders) {
-            Buyer buyer = order.getBuyer();
-
-            for (OrderItem oi : order.getOrderItems()) {
-                // 주문아이템에 매핑된 배송 정보와 주소 획득
-                Delivery delivery = oi.getDelivery();
-                Address address = (delivery != null) ? delivery.getAddress() : null;
-
-                // (환불상태 parameter와 판매자 상품만 필터)
-                if (oi.getRefundStatus() == refundStatus && sellerItemIds.contains(oi.getItemId())) {
-                    // 6. 아이템 정보 조회
-                    Item item = itemService.getItemById(oi.getItemId());
-                    // 7. refundRequest 정보 가져오기
-                    RefundRequest refundRequest = oi.getRefundRequest();
-
-                    // 8. 내부 DTO 객체 생성
-                    BuyerInfo buyerInfo = new BuyerInfo(buyer);
-                    AddressInfo addressInfo = (address != null) ? new AddressInfo(address) : null;
-                    RefundInfo refundInfo = new RefundInfo(refundRequest);
-
-                    // 9. DTO 변환 후 결과에 추가
-                    result.add(new RefundRequestDetailDto(order, oi, item, buyerInfo, addressInfo, refundInfo));
-
-                    // 10. requestedAt 기준으로 내림차순 정렬
-                    result.sort(Comparator.comparing(dto -> dto.getRefundInfo().getRequestedAt(), Comparator.nullsLast(Comparator.reverseOrder())));
-                }
-            }
+        if (sellerItemIds.isEmpty()) {
+            return Page.empty(pageable);
         }
-        return result;
+
+        // 2) JPA에서 페이징 조회 (Order, Delivery, RefundRequest fetch join)
+        Page<OrderItem> pageItems =
+                orderItemRepository.findRefundItemsBySellerItemIds(sellerItemIds, refundStatus, pageable);
+
+        if (pageItems.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        List<OrderItem> content = pageItems.getContent();
+
+        // 3) Mongo Item 일괄 조회 → Map
+        List<String> itemIds = content.stream()
+                .map(OrderItem::getItemId)
+                .distinct()
+                .toList();
+        List<Item> items =
+                itemService.getPartialItemsByIds(itemIds);
+        java.util.Map<String, Item> itemMap =
+                items.stream().collect(Collectors.toMap(Item::getId, it -> it));
+
+        // 4) DTO 매핑
+        List<RefundRequest> dtos = new ArrayList<>(content.stream()
+                .map(oi -> {
+                    Order order = oi.getOrder();
+                    Buyer buyer = order.getBuyer();
+                    Delivery del = oi.getDelivery();
+                    Address addr = (del != null) ? del.getAddress() : null;
+                    Item item = itemMap.get(oi.getItemId());
+                    Refund refund = oi.getRefund();
+
+                    var buyerInfo = new BuyerInfo(buyer);
+                    var addressInfo = (addr != null) ? new AddressInfo(addr) : null;
+                    var refundInfo = new RefundInfo(refund);
+
+                    return new RefundRequest(order, oi, item, buyerInfo, addressInfo, refundInfo);
+                })
+                .toList());
+
+        // 5) 안정적 정렬 (DB에서도 requestedAt desc로 정렬하지만 null 안전을 위해 한 번 더 정렬)
+        dtos.sort(comparing(
+                dto -> dto.getRefundInfo().getRequestedAt(),
+                nullsLast(reverseOrder())
+        ));
+
+        return new PageImpl<>(dtos, pageable, pageItems.getTotalElements());
     }
 
     /**
      * 판매자 환불 요청 완료
      */
-    public String completeRefund(Long orderItemId, Long sellerId) {
+    public RefundResponse completeRefund(Long orderItemId, Long sellerId) {
         // 주문 아이템 조회
         OrderItem orderItem = orderItemRepository.findById(orderItemId)
                 .orElseThrow(() -> new RuntimeException("주문 아이템을 찾을 수 없습니다: " + orderItemId));
@@ -801,51 +857,69 @@ public class OrderService {
         item.addStock(orderItem.getCount());
         itemRepository.save(item);
 
-        // (필요시) 주문 상태 또는 결제 상태 업데이트 등 추가 처리 가능
+        // 포인트 적립 취소
+        Long buyerId = orderItem.getOrder().getBuyer().getId();
+        long expirePoint = ledgerPointService.expireBuyer(buyerId);
+
+        // 사용한 포인트 취소
         long price = orderItem.getOrderPrice() * orderItem.getCount();
-        long usePointAmount = -(orderItem.getOrder().getPointLedger().getAmount());
-        if (price >= usePointAmount) {
-            Long buyerId = orderItem.getOrder().getBuyer().getId();
-            Long pointLedgerId = orderItem.getOrder().getPointLedger().getId();
-            ledgerPointService.cancelUse(buyerId, pointLedgerId, "환불에 의한 포인트 사용 취소", "System");
+        long usePointAmount = 0;
+        if(orderItem.getOrder().getPointLedger() != null){
+            if (price >= usePointAmount) {
+                Long pointLedgerId = orderItem.getOrder().getPointLedger().getId();
+                long cancelUsePoint = ledgerPointService.cancelUse(buyerId, pointLedgerId, "환불에 의한 포인트 사용 취소", "System");
+                return new RefundResponse(expirePoint, cancelUsePoint, "포인트 사용이 취소되었습니다.");
+            } else {
+                return new RefundResponse("사용 포인트 보다 작은 금액의 상품을 환불 할 경우 포인트는 반환되지 않습니다.");
+            }
         } else {
-            return "사용 포인트 보다 작은 금액의 상품을 환불 할 경우 포인트는 반환되지 않습니다.";
+            return new RefundResponse("환불이 완료 되었습니다.");
         }
-        return "환불이 완료 되었습니다.";
     }
 
     /**
      * 판매자의 item의 주문 기록 조회
      */
-    public List<SellerOrderDto> getSellerOrders(Long sellerId) {
-        // 1. MongoDB에서 해당 판매자의 상품 목록을 모두 조회 (sellerId는 String)
-        List<Item> sellerItems = itemRepository.findBySellerId(sellerId.toString());
+    @Transactional(readOnly = true)
+    public Page<SellerOrderDto> getSellerOrders(Long sellerId, Pageable pageable, String itemId) {
+        // 판매자 소유 아이템 검증 및 아이템 집합 구성
+        Set<String> sellerItemIds = itemService.getItemsBySellerId(String.valueOf(sellerId))
+                .stream().map(Item::getId).collect(Collectors.toSet());
 
-        // 2. 각 상품의 ID만 추출해서 Set으로 변환 (중복 제거 및 빠른 조회를 위해)
-        Set<String> sellerItemIds = sellerItems.stream()
-                .map(Item::getId)
-                .collect(Collectors.toSet());
+        if (sellerItemIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
 
-        // 3. 판매자의 상품이 하나도 없다면 빈 리스트 반환
-        if (sellerItemIds.isEmpty()) return Collections.emptyList();
+        // itemId가 전달되면 소유권 검증 및 단일 필터 적용
+        Set<String> targetItemIds = sellerItemIds;
+        if (itemId != null && !itemId.isBlank()) {
+            if (!sellerItemIds.contains(itemId)) {
+                // 판매자 소유가 아닌 아이템 요청 차단
+                throw new AccessDeniedException("not owner of item");
+            }
+            targetItemIds = Set.of(itemId);
+        }
 
-        // 4. OrderItem 테이블에서 itemId가 판매자의 상품인 주문 아이템들만 조회 (JPA에서 IN 쿼리 생성)
-        List<OrderItem> orderItems = orderItemRepository.findAllByItemIdInOrderByOrder_OrderDateDesc(new ArrayList<>(sellerItemIds));
+        // 페이지 조회
+        Page<OrderItem> pageItems = orderItemRepository.findSellerOrderItemsPage(targetItemIds, pageable);
 
-        // 5. itemId로 빠르게 Item 객체를 참조할 수 있도록 Map으로 구성
-        Map<String, Item> itemMap = sellerItems.stream()
-                .collect(Collectors.toMap(Item::getId, item -> item));
+        if (pageItems.isEmpty()) {
+            return Page.empty(pageable);
+        }
 
-        return orderItems.stream()
-                // 6. 필터링된 주문 아이템들을 DTO 형태로 변환하여 리스트에 담음
-                // ① 주문 상태가 TEMPORARY가 아닌 경우만 필터링
-                .filter(orderItem -> orderItem.getOrder().getStatus() != OrderStatus.TEMPORARY)
-                .map(orderItem -> new SellerOrderDto(
-                        orderItem.getOrder(),               // Order 엔티티
-                        orderItem,                          // OrderItem 엔티티
-                        itemMap.get(orderItem.getItemId())  // Item 엔티티
-                ))
-                .collect(Collectors.toList());              // 7. 최종 주문 목록 반환
+        // 페이지 내 아이템 메타 최소 조회
+        List<String> pageItemIds = pageItems.getContent().stream()
+                .map(OrderItem::getItemId).distinct().toList();
+        Map<String, Item> itemMap = itemService.getPartialItemsByIds(pageItemIds)
+                .stream().collect(Collectors.toMap(Item::getId, it -> it));
+
+        // DTO 변환
+        List<SellerOrderDto> dtos = pageItems.getContent().stream()
+                .filter(oi -> oi.getOrder().getStatus() != OrderStatus.TEMPORARY)
+                .map(oi -> new SellerOrderDto(oi.getOrder(), oi, itemMap.get(oi.getItemId())))
+                .toList();
+
+        return new PageImpl<>(dtos, pageable, pageItems.getTotalElements());
     }
 
     /**

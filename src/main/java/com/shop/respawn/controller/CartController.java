@@ -5,6 +5,7 @@ import com.shop.respawn.domain.Item;
 import com.shop.respawn.dto.CartItemDto;
 import com.shop.respawn.dto.CartItemIdsRequest;
 import com.shop.respawn.dto.QuantityChangeRequest;
+import com.shop.respawn.exception.ApiMessage;
 import com.shop.respawn.service.CartService;
 import com.shop.respawn.service.ItemService;
 import jakarta.validation.Valid;
@@ -32,16 +33,16 @@ public class CartController {
      * 장바구니에 상품 추가
      */
     @PostMapping("/add")
-    public ResponseEntity<String> addToCart(
+    public ResponseEntity<ApiMessage> addToCart(
             Authentication authentication,
             @RequestBody CartItemDto cartItemDto
     ) {
         Long buyerId = getUserIdFromAuthentication(authentication);
         try {
             cartService.addItemToCart(buyerId, cartItemDto.getItemId(), cartItemDto.getCount());
-            return ResponseEntity.ok("장바구니에 상품이 추가되었습니다.");
+            return ResponseEntity.ok(ApiMessage.of("SUCCESS","장바구니에 추가되었습니다."));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(ApiMessage.of("ERROR",e.getMessage()));
         }
     }
 

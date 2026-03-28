@@ -1,18 +1,22 @@
 package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
-import com.shop.respawn.dto.ItemDto;
-import com.shop.respawn.dto.OffsetPage;
-import com.shop.respawn.dto.ItemCategoryDto;
+import com.shop.respawn.dto.item.ItemDto;
+import com.shop.respawn.dto.item.ItemSummaryDto;
+import com.shop.respawn.repository.mongo.CategoryRepository;
 import com.shop.respawn.repository.mongo.ItemRepository;
 import com.shop.respawn.repository.jpa.OrderItemRepository;
 import com.shop.respawn.repository.jpa.SellerRepository;
 import lombok.RequiredArgsConstructor;
-import org.jetbrains.annotations.NotNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 import static com.shop.respawn.domain.DeliveryStatus.*;
 import static com.shop.respawn.domain.OrderStatus.*;
@@ -25,12 +29,18 @@ public class ItemService {
     private final ItemRepository itemRepository;
     private final SellerRepository sellerRepository;
     private final OrderItemRepository orderItemRepository; // 주문 아이템 조회용
+    private final CategoryRepository categoryRepository;
 
     public Item registerItem(ItemDto itemDto, Long sellerId) {
         try {
 
             Seller findSeller = sellerRepository.findById(sellerId)
                     .orElseThrow(() -> new RuntimeException("판매자를 찾을 수 없습니다"));
+
+            Category category = itemRepository.findCategoryByName(itemDto.getCategoryName())
+                    .orElseThrow(() -> new RuntimeException("존재하지 않는 카테고리입니다: " + itemDto.getCategory()));
+
+            ObjectId categoryId = new ObjectId(category.getId());
 
             Item newItem = new Item();
             newItem.setName(itemDto.getName());
@@ -42,7 +52,7 @@ public class ItemService {
             newItem.setStockQuantity(itemDto.getStockQuantity());
             newItem.setSellerId(String.valueOf(sellerId));
             newItem.setImageUrl(itemDto.getImageUrl()); // 대표 사진 경로만 저장
-            newItem.setCategory(itemDto.getCategory());
+            newItem.setCategory(categoryId);
             newItem.setDescription(itemDto.getDescription());
             if (newItem.getStatus() == null && ItemStatus.class.isEnum()) {
                 newItem.setStatus(ItemStatus.SALE);
@@ -63,6 +73,11 @@ public class ItemService {
             throw new RuntimeException("본인이 등록한 상품만 수정할 수 있습니다.");
         }
 
+        Category category = itemRepository.findCategoryByName(itemDto.getCategoryName())
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 카테고리입니다: " + itemDto.getCategory()));
+
+        ObjectId categoryId = new ObjectId(category.getId());
+
         // 상품 정보 수정
         item.setName(itemDto.getName());
         item.setDescription(itemDto.getDescription());
@@ -72,7 +87,7 @@ public class ItemService {
         item.setCompanyNumber(itemDto.getCompanyNumber());
         item.setPrice(itemDto.getPrice());
         item.setStockQuantity(itemDto.getStockQuantity());
-        item.setCategory(itemDto.getCategory());
+        item.setCategory(categoryId);
 
         // 이미지 URL은 별도의 로직으로 처리하거나 그대로 유지
         if (itemDto.getImageUrl() != null && !itemDto.getImageUrl().isEmpty()) {
@@ -87,19 +102,39 @@ public class ItemService {
                 .orElseThrow(() -> new RuntimeException("상품을 찾을 수 없습니다: " + id));
     }
 
-    @NotNull
-    public ItemCategoryDto getItemByCategory(String category, int offset, int limit) {
-        OffsetPage<Item> result = itemRepository.findItemsByOffsetUsingName(category, offset, limit);
+    public Page<ItemDto> getItemByCategory(String category, Pageable pageable) {
+        Page<ItemDto> itemPage = itemRepository.findItemsByCategoryWithPageable(category, pageable);
 
-        List<ItemDto> itemDtos = result.items().stream()
-                .map(item -> new ItemDto(item.getId(), item.getName(), item.getDescription(), item.getDeliveryType(), item.getDeliveryFee(), item.getCompany(),
-                        item.getCompanyNumber(), item.getPrice(), item.getStockQuantity(), item.getSellerId(), item.getImageUrl(), item.getCategory()))
+        List<ItemDto> itemDtos = itemPage.stream()
+                .map(item -> new ItemDto(
+                        item.getId(),
+                        item.getName(),
+                        item.getDescription(),
+                        item.getDeliveryType(),
+                        item.getDeliveryFee(),
+                        item.getCompany(),
+                        item.getCompanyNumber(),
+                        item.getPrice(),
+                        item.getStockQuantity(),
+                        item.getSellerId(),
+                        item.getImageUrl(),
+                        item.getCategory()
+                ))
                 .toList();
-        return new ItemCategoryDto(result, itemDtos);
+
+        return new PageImpl<>(itemDtos, pageable, itemPage.getTotalElements());
     }
 
     public List<Item> getItemsBySellerId(String sellerId) {
         return itemRepository.findBySellerId(sellerId);
+    }
+
+    public Page<ItemDto> getSimpleItemsBySellerId(String sellerId,String search, Pageable pageable) {
+        return itemRepository.findSimpleItemsBySellerId(sellerId, search, pageable);
+    }
+
+    public List<Item> getPartialItemsByIds(List<String> itemIds) {
+        return itemRepository.findPartialItemsByIds(itemIds);
     }
 
     public String getSellerIdByItemId(String itemId) {
@@ -110,6 +145,11 @@ public class ItemService {
 
     public List<Item> getItemsByIds(List<String> itemIds) {
         return itemRepository.findAllById(itemIds);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ItemSummaryDto> getMyItemIdAndNames(String sellerId) {
+        return itemRepository.findItemIdAndNameBySellerId(sellerId);
     }
 
     /**
@@ -166,17 +206,68 @@ public class ItemService {
         return itemRepository.fullTextSearch(keyword.trim());
     }
 
-    public List<Item> searchItemsByCategory(String keyword, List<String> categoryIds) {
-        if ((keyword == null || keyword.isBlank()) && (categoryIds == null || categoryIds.isEmpty())) {
-            return List.of();
+    /**
+     * 고급 검색 페이징(키워드 + 카테고리 + 회사명 + 가격 범위 + 배송 방법)
+     */
+    public Page<ItemDto> searchItemsByCategory(String query, List<String> categoryIds, String company,
+                                               Long minPrice, Long maxPrice, String deliveryType, Pageable pageable) {
+
+        if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
+            throw new IllegalArgumentException("최소 가격이 최대 가격보다 클 수 없습니다.");
         }
-        if (categoryIds == null || categoryIds.isEmpty()) {
-            return searchItems(keyword);
+
+        Page<Item> itemPage = itemRepository.searchByKeywordAndCategories(
+                query, categoryIds, company, minPrice, maxPrice, deliveryType, pageable
+        );
+
+        // Page 내부의 Item들을 ItemDto로 변환
+        return itemPage.map(item -> new ItemDto(
+                item.getId(),
+                item.getName(),
+                item.getDescription(),
+                item.getDeliveryType(),
+                item.getDeliveryFee(),
+                item.getCompany(),
+                item.getCompanyNumber(),
+                item.getPrice(),
+                item.getStockQuantity(),
+                item.getSellerId(),
+                item.getImageUrl(),
+                item.getCategory(),
+                item.getStatus()
+        ));
+    }
+
+    public ItemDto findItemWithCategoryName(String id) {
+        Item item = itemRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("해당 상품을 찾을 수 없습니다. id=" + id));
+
+        String categoryName = null;
+        ObjectId categoryId = item.getCategory();
+
+        if (categoryId != null) {
+            Optional<Category> categoryOptional = categoryRepository.findById(categoryId.toString());
+            if (categoryOptional.isPresent()) {
+                categoryName = categoryOptional.get().getName();
+            }
         }
-        // repository에서 ObjectId 변환 및 IN 처리
-        return itemRepository.searchByKeywordAndCategories(
-                keyword == null ? "" : keyword.trim(),
-                categoryIds
+
+        return new ItemDto(
+                item.getId(),
+                item.getName(),
+                item.getDescription(),
+                item.getDeliveryType(),
+                item.getDeliveryFee(),
+                item.getCompany(),
+                item.getCompanyNumber(),
+                item.getPrice(),
+                item.getStockQuantity(),
+                item.getSellerId(),
+                item.getImageUrl(),
+                item.getCategory(),
+                categoryName,
+                item.getStatus()
         );
     }
+
 }

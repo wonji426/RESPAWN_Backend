@@ -33,7 +33,7 @@ public class OrderItem {
     private RefundStatus refundStatus = RefundStatus.NONE;
 
     @OneToOne(mappedBy = "orderItem", cascade = ALL, orphanRemoval = true)
-    private RefundRequest refundRequest;
+    private Refund refund;
 
     //==생성 메서드==//
     public static OrderItem createOrderItem(Item item, Long orderPrice, Long count) {

@@ -1,12 +1,16 @@
 package com.shop.respawn.controller;
 
 import com.shop.respawn.domain.Item;
-import com.shop.respawn.dto.ItemCategoryDto;
-import com.shop.respawn.dto.ItemDto;
-import com.shop.respawn.dto.OffsetResponse;
+import com.shop.respawn.dto.item.ItemDto;
+import com.shop.respawn.dto.PageResponse;
+import com.shop.respawn.dto.item.ItemSummaryDto;
 import com.shop.respawn.service.ImageService;
 import com.shop.respawn.service.ItemService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -51,9 +55,7 @@ public class ItemController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<ItemDto> getItem(@PathVariable String id) {
-        Item item = itemService.getItemById(id);
-        ItemDto itemDto = new ItemDto(item.getId(), item.getName(), item.getDescription(), item.getDeliveryType(), item.getDeliveryFee(), item.getCompany(),
-                item.getCompanyNumber(), item.getPrice(), item.getStockQuantity(), item.getSellerId(), item.getImageUrl(), item.getCategory(), item.getStatus());
+        ItemDto itemDto = itemService.findItemWithCategoryName(id);
         return ResponseEntity.ok(itemDto);
     }
 
@@ -61,41 +63,41 @@ public class ItemController {
      * 카테고리별 상품 조회
      */
     @GetMapping
-    public ResponseEntity<OffsetResponse<ItemDto>> getItems(
+    public ResponseEntity<PageResponse<ItemDto>> getItems(
             @RequestParam(name = "category", required = false) String category,
-            @RequestParam(name = "offset", defaultValue = "0") int offset,
-            @RequestParam(name = "limit", defaultValue = "8") int limit
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) {
-        ItemCategoryDto items = itemService.getItemByCategory(category, offset, limit);
-
-        return ResponseEntity.ok(new OffsetResponse<>(items.itemDtos(), offset, limit, items.result().total()));
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ItemDto> items = itemService.getItemByCategory(category, pageable);
+        return ResponseEntity.ok(PageResponse.from(items));
     }
 
     /**
      * 자신이 등록한 아이템 조회
      */
     @GetMapping("/my-items")
-    public ResponseEntity<List<ItemDto>> getItemsOfLoggedInSeller(Authentication authentication) {
+    public ResponseEntity<PageResponse<ItemDto>> getItemsOfLoggedInSeller(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "_id") String sort,
+            @RequestParam(defaultValue = "desc") String dir
+    ) {
         Long sellerId = getUserIdFromAuthentication(authentication);
+        Sort.Direction direction = Sort.Direction.fromString(dir);
+        Sort sortOrder = Sort.by(direction, sort);
+        Pageable pageable = PageRequest.of(page, size, sortOrder);
+        Page<ItemDto> items = itemService.getSimpleItemsBySellerId(String.valueOf(sellerId),search, pageable);
+        return ResponseEntity.ok(PageResponse.from(items));
+    }
 
-        List<Item> items = itemService.getItemsBySellerId(String.valueOf(sellerId));
-
-        List<ItemDto> itemDtos = items.stream()
-                .map(item -> new ItemDto(item.getId(),
-                        item.getName(),
-                        item.getDescription(),
-                        item.getDeliveryType(),
-                        item.getDeliveryFee(),
-                        item.getCompany(),
-                        item.getCompanyNumber(),
-                        item.getPrice(),
-                        item.getStockQuantity(),
-                        item.getSellerId(),
-                        item.getImageUrl(),
-                        item.getCategory()))
-                .toList();
-
-        return ResponseEntity.ok(itemDtos);
+    @GetMapping("/my-items/summary")
+    public ResponseEntity<List<ItemSummaryDto>> getMyItemNames(Authentication authentication) {
+        Long sellerId = getUserIdFromAuthentication(authentication);
+        List<ItemSummaryDto> result = itemService.getMyItemIdAndNames(String.valueOf(sellerId));
+        return ResponseEntity.ok(result);
     }
 
     /**
@@ -207,32 +209,29 @@ public class ItemController {
     }
 
     /**
-     * 아이템 검색 (키워드 + 카테고리 필터)
+     * 아이템 검색 페이징 (키워드 + 카테고리 + 가격 범위 + 배송방식필터)
      * 예: GET /api/items/search/advanced?query=아이폰&categoryIds=phone&categoryIds=apple
      */
     @GetMapping("/search/advanced")
-    public ResponseEntity<List<ItemDto>> searchItemsAdvanced(
+    public ResponseEntity<PageResponse<ItemDto>> searchItemsAdvanced(
             @RequestParam(name = "query", required = false) String query,
-            @RequestParam(name = "categoryIds", required = false) List<String> categoryIds
+            @RequestParam(name = "categoryIds", required = false) List<String> categoryIds,
+            @RequestParam(name = "company", required = false) String company,
+            @RequestParam(name = "minPrice", required = false) Long minPrice,
+            @RequestParam(name = "maxPrice", required = false) Long maxPrice,
+            @RequestParam(name = "deliveryType", required = false) String deliveryType,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sort, // 정렬 필드
+            @RequestParam(defaultValue = "desc") String dir  // 정렬 방향
     ) {
-        List<Item> items = itemService.searchItemsByCategory(query, categoryIds);
-        List<ItemDto> itemDtos = items.stream()
-                .map(item -> new ItemDto(
-                        item.getId(),
-                        item.getName(),
-                        item.getDescription(),
-                        item.getDeliveryType(),
-                        item.getDeliveryFee(),
-                        item.getCompany(),
-                        item.getCompanyNumber(),
-                        item.getPrice(),
-                        item.getStockQuantity(),
-                        item.getSellerId(),
-                        item.getImageUrl(),
-                        item.getCategory(),
-                        item.getStatus()
-                ))
-                .toList();
-        return ResponseEntity.ok(itemDtos);
+        Sort.Direction direction = Sort.Direction.fromString(dir);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sort));
+
+        Page<ItemDto> resultPage = itemService.searchItemsByCategory(
+                query, categoryIds, company, minPrice, maxPrice, deliveryType, pageable
+        );
+
+        return ResponseEntity.ok(PageResponse.from(resultPage));
     }
 }

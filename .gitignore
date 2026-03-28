@@ -17,9 +17,14 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
+# MySQL database data
+mysql_data/
+
 ### IntelliJ IDEA ###
 application-db.yml
-application-security.yml
+application-dev.yml
+application-prod.yml
+respawn-google-key.json
 .idea
 *.iws
 *.iml

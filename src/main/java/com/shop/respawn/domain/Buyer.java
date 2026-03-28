@@ -42,6 +42,7 @@ public class Buyer extends BaseTimeEntity implements User {
     private Role role;
 
     @Enumerated(STRING)
+    @Builder.Default
     private Grade grade = BASIC;
 
     @Builder.Default

@@ -2,9 +2,10 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.Admin;
 import com.shop.respawn.domain.Notice;
-import com.shop.respawn.dto.NoticeDto;
-import com.shop.respawn.dto.NoticeResponse;
-import com.shop.respawn.dto.NoticeSummaryDto;
+import com.shop.respawn.dto.notice.NoticeDto;
+import com.shop.respawn.dto.notice.NoticeResponse;
+import com.shop.respawn.dto.notice.NoticeSummaryDto;
+import com.shop.respawn.dto.notice.NoticeUpdateDto;
 import com.shop.respawn.repository.jpa.AdminRepository;
 import com.shop.respawn.repository.jpa.NoticeRepository;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +68,30 @@ public class NoticeService {
                 notice.getAdmin().getName(),
                 notice.getNoticeType()
         );
+    }
+
+    /**
+     * 공지사항 수정
+     */
+    public void updateNotice(Long noticeId, NoticeUpdateDto updateDto) {
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new RuntimeException("수정할 공지사항을 찾을 수 없습니다."));
+
+        notice.updateNotice(
+                updateDto.getTitle(),
+                updateDto.getDescription(),
+                updateDto.getNoticeType()
+        );
+    }
+
+    /**
+     * 공지사항 삭제
+     */
+    public void deleteNotice(Long noticeId) {
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new RuntimeException("삭제할 공지사항을 찾을 수 없습니다."));
+
+        noticeRepository.delete(notice);
     }
 
     /**
