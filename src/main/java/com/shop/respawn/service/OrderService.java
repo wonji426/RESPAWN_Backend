@@ -1008,6 +1008,9 @@ public class OrderService {
         return deliveryFee;
     }
 
+    /**
+     * 포인트 적용을 눌렀을 때
+     */
     public String applyPoints(Long buyerId, Long orderId, Long usePointAmount) {
 
         Order order = orderRepository.findById(orderId)
