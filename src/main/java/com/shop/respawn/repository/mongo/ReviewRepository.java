@@ -26,4 +26,6 @@ public interface ReviewRepository extends MongoRepository<Review, String> {
             "{ '$group': { '_id': '$itemId', 'averageRating': { '$avg': '$rating' }, 'totalReviews': { '$sum': 1 } } }"
     })
     com.shop.respawn.dto.review.ReviewStatsDto getReviewStatsByItemId(String itemId);
+
+    long countByBuyerId(String buyerId);
 }

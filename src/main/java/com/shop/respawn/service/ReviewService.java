@@ -402,4 +402,15 @@ public class ReviewService {
 
         return stats;
     }
+
+    /**
+     * 특정 구매자가 작성한 총 리뷰 개수 반환 (마이페이지 단순 조회용)
+     */
+    @Transactional(readOnly = true)
+    public long countMyReviews(Long buyerId) {
+        if (buyerId == null) {
+            return 0;
+        }
+        return reviewRepository.countByBuyerId(String.valueOf(buyerId));
+    }
 }

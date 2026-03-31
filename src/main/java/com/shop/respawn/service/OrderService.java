@@ -1052,4 +1052,20 @@ public class OrderService {
 
         return "포인트 " + usePointAmount + "원이 적용되었습니다.";
     }
+
+    /**
+     * 특정 구매자의 최근 1년(금일 기준) 내 결제 완료된 주문 갯수 조회 (마이페이지 요약용)
+     */
+    @Transactional(readOnly = true)
+    public long countRecentYearOrders(Long buyerId) {
+        if (buyerId == null) {
+            return 0;
+        }
+
+        LocalDateTime to = LocalDateTime.now();
+        LocalDateTime from = to.minusYears(1); // 1년 전
+
+        // 이미 작성해두신 QueryDSL 카운트 메서드 재사용
+        return orderRepository.countPaidOrdersByBuyerAndDateRange(buyerId, from, to);
+    }
 }

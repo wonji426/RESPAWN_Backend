@@ -24,4 +24,6 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
      */
     boolean existsByBuyerIdAndItemId(Long buyerId, String itemId);
 
+    long countByBuyerId(Long buyerId);
+
 }

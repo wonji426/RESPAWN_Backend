@@ -69,7 +69,6 @@ public class WishlistService {
     /**
      * 찜하기 / 찜 취소 토글 메서드 (이전에 설명해 드린 로직)
      */
-    @Transactional
     public boolean toggleWishlist(Long buyerId, String itemId) {
         Optional<Wishlist> optionalWishlist = wishlistRepository.findByBuyerIdAndItemId(buyerId, itemId);
 
@@ -102,5 +101,16 @@ public class WishlistService {
             return false;
         }
         return wishlistRepository.existsByBuyerIdAndItemId(buyerId, itemId);
+    }
+
+    /**
+     * 내가 찜한 상품의 총 갯수를 조회합니다. (마이페이지 요약용)
+     */
+    @Transactional(readOnly = true)
+    public long countMyWishlist(Long buyerId) {
+        if (buyerId == null) {
+            return 0;
+        }
+        return wishlistRepository.countByBuyerId(buyerId);
     }
 }

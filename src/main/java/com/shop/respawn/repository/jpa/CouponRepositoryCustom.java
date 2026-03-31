@@ -13,4 +13,6 @@ public interface CouponRepositoryCustom {
     Page<Coupon> findAllAvailableByBuyerId(Long buyerId, Pageable pageable);
 
     Page<Coupon> findAllUnavailableByBuyerId(Long buyerId, Pageable pageable);
+
+    long countAvailableCouponsByBuyerId(Long buyerId);
 }
