@@ -1,5 +1,6 @@
 package com.shop.respawn.repository.jpa;
 
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.shop.respawn.domain.Order;
 import com.shop.respawn.domain.OrderStatus;
@@ -23,9 +24,11 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
     @Override
     public List<Order> findPaidOrdersByBuyerAndDateRange(Long buyerId, LocalDateTime from, LocalDateTime to, Pageable pageable) {
         return queryFactory.selectFrom(order)
-                .where(order.buyer.id.eq(buyerId)
-                        .and(order.orderDate.between(from, to))
-                        .and(order.status.eq(OrderStatus.PAID)))
+                .where(
+                        order.buyer.id.eq(buyerId)
+                                .and(dateBetween(from, to))
+                                .and(order.status.eq(OrderStatus.PAID))
+                )
                 .orderBy(order.orderDate.desc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
@@ -36,11 +39,22 @@ public class OrderRepositoryImpl implements OrderRepositoryCustom {
     public long countPaidOrdersByBuyerAndDateRange(Long buyerId, LocalDateTime from, LocalDateTime to) {
         Long count = queryFactory.select(order.count())
                 .from(order)
-                .where(order.buyer.id.eq(buyerId)
-                        .and(order.orderDate.between(from, to))
-                        .and(order.status.eq(OrderStatus.PAID)))
+                .where(
+                        order.buyer.id.eq(buyerId)
+                                .and(dateBetween(from, to))
+                                .and(order.status.eq(OrderStatus.PAID))
+                )
                 .fetchOne();
         return count != null ? count : 0L;
+    }
+
+    // ======== 동적 쿼리를 위한 헬퍼 메서드 ========
+    private BooleanExpression dateBetween(LocalDateTime from, LocalDateTime to) {
+        // from 이나 to 둘 중 하나라도 null이면 조건문 자체를 무시 (전체 조회됨)
+        if (from == null || to == null) {
+            return null;
+        }
+        return order.orderDate.between(from, to);
     }
 
     @Override
