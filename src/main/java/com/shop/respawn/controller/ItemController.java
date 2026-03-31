@@ -6,6 +6,7 @@ import com.shop.respawn.dto.PageResponse;
 import com.shop.respawn.dto.item.ItemSummaryDto;
 import com.shop.respawn.service.ImageService;
 import com.shop.respawn.service.ItemService;
+import com.shop.respawn.service.WishlistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,6 +30,7 @@ public class ItemController {
 
     private final ItemService itemService;
     private final ImageService imageService;
+    private final WishlistService wishlistService;
 
     /**
      * 상품 등록
@@ -54,8 +56,27 @@ public class ItemController {
      * Id 값으로 상품 조회
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ItemDto> getItem(@PathVariable String id) {
+    public ResponseEntity<ItemDto> getItem(
+            @PathVariable String id,
+            Authentication authentication
+    ) {
         ItemDto itemDto = itemService.findItemWithCategoryName(id);
+
+        boolean isWished = false;
+
+        if (authentication != null && authentication.isAuthenticated() && !authentication.getPrincipal().equals("anonymousUser")) {
+            try {
+                Long buyerId = getUserIdFromAuthentication(authentication);
+                // 💡 여기서 방금 만든 서비스 메서드를 호출합니다!
+                isWished = wishlistService.checkIsWished(buyerId, id);
+            } catch (Exception e) {
+                // 토큰 파싱 에러나 판매자 계정일 경우 등을 대비해 안전하게 잡고 false 처리
+            }
+        }
+
+        // 3. DTO에 찜 여부 세팅
+        itemDto.setWished(isWished);
+
         return ResponseEntity.ok(itemDto);
     }
 

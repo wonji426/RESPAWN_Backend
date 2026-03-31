@@ -31,6 +31,7 @@ public class Item {
     private ObjectId category;
     private String description;
     private ItemStatus status = SALE;
+    private long wishCount = 0;
     private List<String> tags = new ArrayList<>();
 
     //==비즈니스 로직==//
@@ -44,5 +45,15 @@ public class Item {
             throw new RuntimeException("재고가 부족합니다");
         }
         this.stockQuantity = restStock;
+    }
+
+    public void addWishCount() {
+        this.wishCount++;
+    }
+
+    public void removeWishCount() {
+        if (this.wishCount > 0) {
+            this.wishCount--;
+        }
     }
 }

@@ -3,3 +3,4 @@
 1758200850119|68|rollback|connection 54|url jdbc:h2:tcp://localhost/~/respawn||
 1773743605197|4|rollback|connection 93|url jdbc:mysql://localhost:3306/respawn?serverTimezone=Asia/Seoul&characterEncoding=UTF-8||
 1774961454663|0|rollback|connection 119|url jdbc:h2:tcp://localhost/~/respawn||
+1774966987027|1|rollback|connection 43|url jdbc:h2:tcp://localhost/~/respawn||

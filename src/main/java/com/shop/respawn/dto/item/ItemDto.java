@@ -40,6 +40,8 @@ public class ItemDto {
 
     private ItemStatus status;
 
+    private boolean isWished; // 기본값은 false
+
     public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category) {
         this.id = id;
         this.name = name;

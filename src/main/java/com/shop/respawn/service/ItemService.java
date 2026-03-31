@@ -270,4 +270,11 @@ public class ItemService {
         );
     }
 
+    /**
+     * Item 엔티티를 직접 저장/업데이트 합니다. (찜 카운트 업데이트 등에 사용)
+     */
+    public Item save(Item item) {
+        return itemRepository.save(item);
+    }
+
 }
