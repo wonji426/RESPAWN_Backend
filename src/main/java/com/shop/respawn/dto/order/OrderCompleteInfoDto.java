@@ -36,6 +36,7 @@ public class OrderCompleteInfoDto {
     private Long usedPointAmount;                           // 사용한 포인트
     private Long usedCouponAmount;                          // 사용한 쿠폰 금액
     private Long totalAmount;                               // 결제한 가격
+    private OrderStatus status;
 
     public static OrderCompleteInfoDto from(Order order,
                                             List<OrderCompleteItemDto> items,
@@ -53,6 +54,7 @@ public class OrderCompleteInfoDto {
                 .pgOrderId(order.getPgOrderId())
                 .paymentStatus(order.getPaymentStatus())
                 .orderDate(order.getOrderDate())
+                .status(order.getStatus())
                 .orderItems(items)
                 .deliveryInfo(deliveries)
                 .couponInfo(coupon != null ? CouponDTO.fromEntity(coupon) : null)
