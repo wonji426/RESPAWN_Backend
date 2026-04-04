@@ -55,7 +55,7 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
                     Category.class, "categories"
             );
             List<ObjectId> catIds = cats.stream()
-                    .map(c -> new ObjectId(c.getId().toString())).toList();
+                    .map(c -> new ObjectId(c.getId())).toList();
 
             if (catIds.isEmpty()) {
                 return new PageImpl<>(List.of(), pageable, 0);
@@ -194,6 +194,8 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
         query.fields()
                 .include("_id")
                 .include("name")
+                .include("company")
+                .include("price")
                 .include("imageUrl");
 
         List<Document> docs = mongoTemplate.find(query, Document.class, "item");
@@ -204,6 +206,11 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
             item.setId(doc.getObjectId("_id").toString());
             item.setName(doc.getString("name"));
             item.setImageUrl(doc.getString("imageUrl"));
+            item.setCompany(doc.getString("company"));
+            Object priceObj = doc.get("price");
+            if (priceObj instanceof Number) {
+                item.setPrice((long) ((Number) priceObj).intValue()); // Item 엔티티 타입에 맞게 변환
+            }
             // 실제 Item 객체에 setter가 있다면, 또는 생성자 사용
             return item;
         }).collect(Collectors.toList());

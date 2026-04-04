@@ -80,6 +80,7 @@ public class OrderCompleteInfoDto {
         private Long orderPrice;
         private Long count;
         private Long totalPrice;
+        private RefundStatus refund;
 
         public static OrderCompleteItemDto from(OrderItem orderItem, Item item) {
             return OrderCompleteItemDto.builder()
@@ -90,6 +91,7 @@ public class OrderCompleteInfoDto {
                     .orderPrice(orderItem.getOrderPrice())
                     .count(orderItem.getCount())
                     .totalPrice(orderItem.getOrderPrice() * orderItem.getCount())
+                    .refund(orderItem.getRefundStatus())
                     .build();
         }
     }
