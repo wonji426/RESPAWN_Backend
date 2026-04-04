@@ -385,7 +385,7 @@ public class UserService {
 
         // 임시 토큰 생성 (10분 만료)
         String token = UUID.randomUUID().toString();
-        String resetLink = "http://respawnstore.shop/reset-password?token=" + token;
+        String resetLink = "https://respawnstore.shop/reset-password?token=" + token;
 
         // Redis나 DB에 토큰 저장
         redisUtil.setDataExpire("reset-token:" + token, username, 10 * 60L);
@@ -404,7 +404,7 @@ public class UserService {
         }
 
         String token = UUID.randomUUID().toString();
-        String resetLink = "http://respawnstore.shop/reset-password?token=" + token;
+        String resetLink = "https://respawnstore.shop/reset-password?token=" + token;
 
         redisUtil.setDataExpire("reset-token:" + token, username, 30 * 60L);
 
@@ -773,6 +773,14 @@ public class UserService {
         long expirePoint = ledgerPointService.expireBuyer(buyerId);
 
         return new MyPageMiniResponse(active, couponCnt, grade, expirePoint);
+    }
+
+    /**
+     * 구매자(Buyer)의 등급(Grade) 조회
+     */
+    @Transactional(readOnly = true)
+    public Grade getBuyerGrade(Long buyerId) {
+        return buyerRepository.findBuyerGrade(buyerId);
     }
 
 }

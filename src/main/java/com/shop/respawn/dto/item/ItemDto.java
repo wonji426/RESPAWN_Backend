@@ -42,6 +42,8 @@ public class ItemDto {
 
     private boolean isWished; // 기본값은 false
 
+    private Long wishCount;
+
     public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category) {
         this.id = id;
         this.name = name;
@@ -73,7 +75,7 @@ public class ItemDto {
         this.status = status;
     }
 
-    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, String categoryName, ItemStatus status) {
+    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, String categoryName, ItemStatus status, Long wishCount) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -88,6 +90,7 @@ public class ItemDto {
         this.category = category;
         this.categoryName = categoryName;
         this.status = status;
+        this.wishCount = wishCount;
     }
 
     public ItemDto(String id, String name, String company, String imageUrl, String deliveryType, Long price, long stockQuantity) {

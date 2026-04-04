@@ -65,4 +65,30 @@ public class WishlistController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    /**
+     * 특정 상품 찜 여부 확인 (페이지 진입 시)
+     */
+    @GetMapping("/check/{itemId}")
+    public ResponseEntity<Map<String, Object>> checkWishlistStatus(
+            Authentication authentication,
+            @PathVariable String itemId
+    ) {
+        try {
+            // 로그인을 안 했거나 익명 사용자일 경우 무조건 false 반환
+            if (authentication == null || !authentication.isAuthenticated() || authentication.getPrincipal().equals("anonymousUser")) {
+                return ResponseEntity.ok(Map.of("isWished", false));
+            }
+
+            Long buyerId = getUserIdFromAuthentication(authentication);
+
+            // 데이터베이스에서 해당 유저가 해당 아이템을 찜했는지 검사하는 로직 호출 (Service에 구현 필요)
+            boolean isWished = wishlistService.checkIsWished(buyerId, itemId);
+
+            return ResponseEntity.ok(Map.of("isWished", isWished));
+        } catch (Exception e) {
+            // 에러 발생 시 시각적으로 찜 안됨 처리
+            return ResponseEntity.ok(Map.of("isWished", false));
+        }
+    }
 }

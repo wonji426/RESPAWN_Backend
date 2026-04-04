@@ -266,7 +266,8 @@ public class ItemService {
                 item.getImageUrl(),
                 item.getCategory(),
                 categoryName,
-                item.getStatus()
+                item.getStatus(),
+                item.getWishCount()
         );
     }
 
