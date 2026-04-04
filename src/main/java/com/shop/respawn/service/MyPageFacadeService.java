@@ -1,6 +1,5 @@
 package com.shop.respawn.service;
 
-import com.shop.respawn.domain.Buyer;
 import com.shop.respawn.domain.Grade;
 import com.shop.respawn.dto.MyPageSummaryDto;
 import lombok.RequiredArgsConstructor;
