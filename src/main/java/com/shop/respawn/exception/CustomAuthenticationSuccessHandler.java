@@ -4,10 +4,12 @@ import com.shop.respawn.repository.jpa.BuyerRepository;
 import com.shop.respawn.repository.jpa.SellerRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
@@ -26,20 +28,51 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException {
         String username = authentication.getName();
+        String authorities = authentication.getAuthorities().toString();
 
-        switch (authentication.getAuthorities().toString()) {
-            case "[ROLE_USER]" -> {
-                long updated = buyerRepository.resetFailedLoginByUsername(username);
-                log.debug("buyer reset: username={}, updated={}", username, updated);
+        String loginType = request.getParameter("loginType");
+        boolean isFromAdminPage = "admin".equals(loginType);
+
+        if (authorities.contains("ROLE_ADMIN")) {
+            if (!isFromAdminPage) {
+                log.warn("관리자 계정으로 일반 로그인 시도 차단: {}", username);
+                blockLogin(request, response, "관리자는 일반 로그인 페이지를 이용할 수 없습니다.");
+                return;
             }
-            case "[ROLE_SELLER]" -> {
-                long updated = sellerRepository.resetFailedLoginByUsername(username);
-                log.debug("seller reset: username={}, updated={}", username, updated);
+        }
+        else {
+            if (isFromAdminPage) {
+                log.warn("일반 사용자 계정으로 관리자 로그인 시도 차단: {}", username);
+                blockLogin(request, response, "일반 사용자는 관리자 페이지에 로그인할 수 없습니다.");
+                return;
+            }
+
+            switch (authorities) {
+                case "[ROLE_USER]" -> {
+                    long updated = buyerRepository.resetFailedLoginByUsername(username);
+                    log.debug("buyer reset: username={}, updated={}", username, updated);
+                }
+                case "[ROLE_SELLER]" -> {
+                    long updated = sellerRepository.resetFailedLoginByUsername(username);
+                    log.debug("seller reset: username={}, updated={}", username, updated);
+                }
             }
         }
 
         String target = "/loginOk";
 
         response.sendRedirect(target);
+    }
+
+    private void blockLogin(HttpServletRequest request, HttpServletResponse response, String errorMessage) throws IOException {
+        SecurityContextHolder.clearContext();
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"error\": \"" + errorMessage + "\"}");
     }
 }
