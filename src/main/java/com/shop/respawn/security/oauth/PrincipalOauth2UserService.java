@@ -9,6 +9,7 @@ import com.shop.respawn.security.oauth.provider.GoogleUserInfo;
 import com.shop.respawn.security.oauth.provider.KakaoUserInfo;
 import com.shop.respawn.security.oauth.provider.NaverUserInfo;
 import com.shop.respawn.security.oauth.provider.OAuth2UserInfo;
+import com.shop.respawn.service.CouponService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -26,6 +27,7 @@ public class PrincipalOauth2UserService extends DefaultOAuth2UserService {
 
     private final BuyerRepository buyerRepository;
     private final BCryptPasswordEncoder encoder;
+    private final CouponService couponService;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
@@ -88,6 +90,9 @@ public class PrincipalOauth2UserService extends DefaultOAuth2UserService {
                 }
                 newBuyer.renewExpiryDate(); // 정책에 따라 유지
                 buyerRepository.save(newBuyer);
+
+                couponService.newBuyerCoupon(newBuyer.getId());
+
                 return new PrincipalDetails(newBuyer, oAuth2User.getAttributes());
             } else {
                 throw new OAuth2AuthenticationException(
