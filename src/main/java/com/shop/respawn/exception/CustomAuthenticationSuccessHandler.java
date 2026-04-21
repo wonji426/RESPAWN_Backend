@@ -39,8 +39,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                 blockLogin(request, response, "관리자는 일반 로그인 페이지를 이용할 수 없습니다.");
                 return;
             }
-        }
-        else {
+        } else {
             if (isFromAdminPage) {
                 log.warn("일반 사용자 계정으로 관리자 로그인 시도 차단: {}", username);
                 blockLogin(request, response, "일반 사용자는 관리자 페이지에 로그인할 수 없습니다.");
@@ -48,20 +47,21 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
             }
 
             switch (authorities) {
-                case "[ROLE_USER]" -> {
-                    long updated = buyerRepository.resetFailedLoginByUsername(username);
-                    log.debug("buyer reset: username={}, updated={}", username, updated);
-                }
-                case "[ROLE_SELLER]" -> {
-                    long updated = sellerRepository.resetFailedLoginByUsername(username);
-                    log.debug("seller reset: username={}, updated={}", username, updated);
-                }
+                case "[ROLE_USER]" -> buyerRepository.resetFailedLoginByUsername(username);
+                case "[ROLE_SELLER]" -> sellerRepository.resetFailedLoginByUsername(username);
             }
         }
 
-        String target = "/loginOk";
-
-        response.sendRedirect(target);
+        if (isFromAdminPage) {
+            response.setStatus(HttpServletResponse.SC_OK);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(String.format(
+                    "{\"message\": \"로그인 성공\", \"role\": \"ROLE_ADMIN\", \"username\": \"%s\"}",
+                    username
+            ));
+        } else {
+            response.sendRedirect("/loginOk");
+        }
     }
 
     private void blockLogin(HttpServletRequest request, HttpServletResponse response, String errorMessage) throws IOException {
