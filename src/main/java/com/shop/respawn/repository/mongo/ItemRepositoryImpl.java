@@ -115,7 +115,8 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
                 .include("imageUrl")
                 .include("deliveryType")
                 .include("price")
-                .include("stockQuantity");
+                .include("stockQuantity")
+                .include("soldCount");
 
         List<Document> docs = mongoTemplate.find(query, Document.class, "item");
         List<ItemDto> list = docs.stream()
@@ -126,7 +127,8 @@ public class ItemRepositoryImpl implements ItemRepositoryCustom{
                         doc.getString("imageUrl"),
                         doc.getString("deliveryType"),
                         doc.getLong("price"),
-                        doc.getLong("stockQuantity")
+                        doc.getLong("stockQuantity"),
+                        doc.getLong("soldCount")
                 )).toList();
 
         Query countQuery = new Query(criteria);
