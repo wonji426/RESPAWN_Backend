@@ -284,6 +284,10 @@ public class OrderService {
         // 4. 재고 차감
         reduceStockFromOrderItems(order.getOrderItems());
 
+        order.getOrderItems().forEach(oi ->
+                itemService.increaseSoldCount(oi.getItemId(), (long) oi.getCount())
+        );
+
         // 5. 주문 상태 주문 완료로 변경
         order.setStatus(OrderStatus.PAID);
 
@@ -867,6 +871,7 @@ public class OrderService {
 
         // 재고 복원 (필요한 경우)
         item.addStock(orderItem.getCount());
+        item.removeSoldCount(orderItem.getCount());
         itemRepository.save(item);
 
         // 포인트 적립 취소

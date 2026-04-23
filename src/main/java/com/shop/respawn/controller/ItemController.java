@@ -103,7 +103,7 @@ public class ItemController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "_id") String sort,
+            @RequestParam(defaultValue = "createdAt") String sort,
             @RequestParam(defaultValue = "desc") String dir
     ) {
         Long sellerId = getUserIdFromAuthentication(authentication);
@@ -243,7 +243,7 @@ public class ItemController {
             @RequestParam(name = "deliveryType", required = false) String deliveryType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "id") String sort, // 정렬 필드
+            @RequestParam(defaultValue = "createdAt") String sort, // 정렬 필드
             @RequestParam(defaultValue = "desc") String dir  // 정렬 방향
     ) {
         Sort.Direction direction = Sort.Direction.fromString(dir);

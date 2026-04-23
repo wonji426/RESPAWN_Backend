@@ -6,6 +6,7 @@ import lombok.Setter;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,12 +27,14 @@ public class Item {
     private Long companyNumber;
     private Long price;
     private long stockQuantity;
+    private Long soldCount = 0L;
     private String sellerId;
     private String imageUrl;
     private ObjectId category;
     private String description;
     private ItemStatus status = SALE;
     private long wishCount = 0;
+    private LocalDateTime createdAt;
     private List<String> tags = new ArrayList<>();
 
     //==비즈니스 로직==//
@@ -54,6 +57,25 @@ public class Item {
     public void removeWishCount() {
         if (this.wishCount > 0) {
             this.wishCount--;
+        }
+    }
+
+    public void addSoldCount(long quantity) {
+        if (this.soldCount == null) {
+            this.soldCount = 0L;
+        }
+        this.soldCount += quantity;
+    }
+
+    public void removeSoldCount(long quantity) {
+        if (this.soldCount == null) {
+            this.soldCount = 0L;
+        }
+        this.soldCount -= quantity;
+
+        // 판매량이 마이너스가 되지 않도록 방어
+        if (this.soldCount < 0) {
+            this.soldCount = 0L;
         }
     }
 }
