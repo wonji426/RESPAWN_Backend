@@ -58,6 +58,7 @@ public class ItemService {
             newItem.setCreatedAt(LocalDateTime.now());
             newItem.setSoldCount(0L);
             newItem.setWishCount(0L);
+            newItem.setReviewCount(0L);
             if (newItem.getStatus() == null && ItemStatus.class.isEnum()) {
                 newItem.setStatus(ItemStatus.SALE);
             }
@@ -123,7 +124,8 @@ public class ItemService {
                         item.getSellerId(),
                         item.getImageUrl(),
                         item.getCategory(),
-                        item.getSoldCount()
+                        item.getSoldCount(),
+                        item.getReviewCount()
                 ))
                 .toList();
 
@@ -239,7 +241,11 @@ public class ItemService {
                 item.getSellerId(),
                 item.getImageUrl(),
                 item.getCategory(),
-                item.getStatus()
+                null,    // categoryName (필요 없으면 null)
+                item.getStatus(),
+                item.getWishCount(), // wishCount 포함
+                item.getSoldCount(), // soldCount 포함
+                item.getReviewCount()
         ));
     }
 
@@ -273,7 +279,8 @@ public class ItemService {
                 categoryName,
                 item.getStatus(),
                 item.getWishCount(),
-                item.getSoldCount()
+                item.getSoldCount(),
+                item.getReviewCount()
         );
     }
 
