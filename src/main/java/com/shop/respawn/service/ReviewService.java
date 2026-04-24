@@ -77,6 +77,11 @@ public class ReviewService {
                 .build();
 
         reviewRepository.save(review);
+
+        Item item = itemService.getItemById(itemId);
+        item.addReviewCount();
+
+        itemService.save(item);
     }
 
     /**

@@ -35,6 +35,7 @@ public class Item {
     private ItemStatus status = SALE;
     private long wishCount = 0;
     private LocalDateTime createdAt;
+    private Long reviewCount = 0L;
     private List<String> tags = new ArrayList<>();
 
     //==비즈니스 로직==//
@@ -76,6 +77,17 @@ public class Item {
         // 판매량이 마이너스가 되지 않도록 방어
         if (this.soldCount < 0) {
             this.soldCount = 0L;
+        }
+    }
+
+    public void addReviewCount() {
+        if (this.reviewCount == null) this.reviewCount = 0L;
+        this.reviewCount++;
+    }
+
+    public void removeReviewCount() {
+        if (this.reviewCount != null && this.reviewCount > 0) {
+            this.reviewCount--;
         }
     }
 }
