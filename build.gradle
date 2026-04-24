@@ -13,7 +13,7 @@ java {
 	}
 }
 
-// ✅ 추가됨: 간접 의존성 강제 버전 고정 (constraints 문법 에러 완벽 해결)
+// 간접 의존성 강제 버전 고정 (constraints 문법 에러 완벽 해결)
 configurations.configureEach {
 	resolutionStrategy {
 		force 'com.squareup.retrofit2:retrofit:2.11.0'
@@ -42,21 +42,24 @@ dependencies {
 	implementation 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.11.0'
 	implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-	implementation 'org.springframework.boot:spring-boot-starter-security' //서버 보안
-	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client' //소셜 로그인 서비스
-	compileOnly 'org.projectlombok:lombok' //어노테이션 기반 코딩
-	runtimeOnly 'com.h2database:h2' //개발용 데이터 베이스
+	implementation 'org.springframework.boot:spring-boot-starter-security' // 서버 보안
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client' // 소셜 로그인 서비스
+	compileOnly 'org.projectlombok:lombok' // 어노테이션 기반 코딩
+	runtimeOnly 'com.h2database:h2' // 개발용 데이터 베이스
 	runtimeOnly 'com.mysql:mysql-connector-j'
-	annotationProcessor 'org.projectlombok:lombok' //어노테이션 기반 코딩
+	annotationProcessor 'org.projectlombok:lombok' // 어노테이션 기반 코딩
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	implementation 'net.nurigo:sdk:4.3.2' //전화번호 인증 서비스
-	implementation 'org.springframework.boot:spring-boot-starter-mail' //메일 인증 서비스
-	implementation 'org.springframework.boot:spring-boot-starter-data-redis' //레디스
+	implementation 'net.nurigo:sdk:4.3.2' // 전화번호 인증 서비스
+	implementation 'org.springframework.boot:spring-boot-starter-mail' // 메일 인증 서비스
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis' // 레디스
 	implementation 'com.github.iamport:iamport-rest-client-java:0.2.23'
 
-	//test 롬복 사용
+	// 실시간 채팅
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+	// test 롬복 사용
 	testCompileOnly 'org.projectlombok:lombok'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 
@@ -66,7 +69,7 @@ dependencies {
 	annotationProcessor "jakarta.annotation:jakarta.annotation-api"
 	annotationProcessor "jakarta.persistence:jakarta.persistence-api"
 
-	//제미나이
+	// 제미나이
 	implementation 'org.springframework.boot:spring-boot-starter-webflux' // 비동기 통신용
 	implementation platform("org.springframework.ai:spring-ai-bom:1.1.3")
 	implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'

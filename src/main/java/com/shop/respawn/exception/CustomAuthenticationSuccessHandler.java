@@ -60,7 +60,7 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
                     username
             ));
         } else {
-            response.sendRedirect("/loginOk");
+            response.sendRedirect("/api/loginOk");
         }
     }
 
