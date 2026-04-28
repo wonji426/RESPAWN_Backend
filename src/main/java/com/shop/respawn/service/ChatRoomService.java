@@ -2,7 +2,6 @@ package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.chat.ChatRoomListResponse;
-import com.shop.respawn.repository.UserRepositoryCustom;
 import com.shop.respawn.repository.jpa.BuyerRepository;
 import com.shop.respawn.repository.jpa.SellerRepository;
 import com.shop.respawn.repository.mongo.ChatMessageRepository;
