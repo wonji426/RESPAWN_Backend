@@ -1,10 +1,13 @@
 package com.shop.respawn.service;
 
-import com.shop.respawn.domain.ChatMessage;
-import com.shop.respawn.domain.ChatRoom;
+import com.shop.respawn.domain.*;
 import com.shop.respawn.dto.chat.ChatRoomListResponse;
+import com.shop.respawn.repository.UserRepositoryCustom;
+import com.shop.respawn.repository.jpa.BuyerRepository;
+import com.shop.respawn.repository.jpa.SellerRepository;
 import com.shop.respawn.repository.mongo.ChatMessageRepository;
 import com.shop.respawn.repository.mongo.ChatRoomRepository;
+import com.shop.respawn.repository.mongo.ItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +21,9 @@ public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final BuyerRepository buyerRepository;
+    private final SellerRepository sellerRepository;
+    private final ItemRepository itemRepository;
 
     public String createOrGetChatRoom(String buyerId, String sellerId, String itemId) {
         // 1. 방어 로직: 구매자와 판매자가 같은 경우 (자신의 상품에 문의하기 클릭)
@@ -58,7 +64,7 @@ public class ChatRoomService {
                             msg.senderId(),
                             msg.message(),
                             msg.type(),
-                            true, // 읽음 처리
+                            true,
                             msg.timestamp()
                     ))
                     .toList();
@@ -68,11 +74,23 @@ public class ChatRoomService {
 
     public List<ChatRoomListResponse> getSellerChatRooms(Long sellerId) {
         String sellerIdStr = String.valueOf(sellerId);
+        String sellerUsername = sellerRepository.findById(sellerId)
+                .map(Seller::getUsername)
+                .orElse("알 수 없는 사용자");
         return chatRoomRepository.findBySellerId(sellerIdStr).stream()
                 .map(room -> {
                     long unreadCount = chatMessageRepository.countByRoomIdAndSenderIdNotAndIsReadFalse(room.id(), sellerIdStr);
+                    String buyerUsername = buyerRepository.findById(Long.valueOf(room.buyerId()))
+                            .map(Buyer::getUsername)
+                            .orElse("알 수 없는 사용자");
+                    String itemName = "상품 없음";
+                    if (room.itemId() != null) {
+                        itemName = itemRepository.findById(room.itemId())
+                                .map(Item::getName) // 상품명 가져오는 메서드(getName, getTitle 등)
+                                .orElse("삭제된 상품");
+                    }
                     return new ChatRoomListResponse(
-                            room.id(), room.buyerId(), room.sellerId(), room.itemId(), room.createdAt(), unreadCount
+                            room.id(), room.buyerId(), buyerUsername, room.sellerId(), sellerUsername, room.itemId(), itemName, room.createdAt(), unreadCount
                     );
                 })
                 .collect(Collectors.toList());
@@ -80,11 +98,23 @@ public class ChatRoomService {
 
     public List<ChatRoomListResponse> getBuyerChatRooms(Long buyerId) {
         String buyerIdStr = String.valueOf(buyerId);
+        String buyerUsername = buyerRepository.findById(buyerId)
+                .map(Buyer::getUsername)
+                .orElse("알 수 없는 사용자");
         return chatRoomRepository.findByBuyerId(buyerIdStr).stream()
                 .map(room -> {
                     long unreadCount = chatMessageRepository.countByRoomIdAndSenderIdNotAndIsReadFalse(room.id(), buyerIdStr);
+                    String sellerUsername = sellerRepository.findById(Long.valueOf(room.sellerId()))
+                            .map(Seller::getUsername)
+                            .orElse("알 수 없는 사용자");
+                    String itemName = "상품 없음";
+                    if (room.itemId() != null) {
+                        itemName = itemRepository.findById(room.itemId())
+                                .map(Item::getName) // 상품명 가져오는 메서드(getName, getTitle 등)
+                                .orElse("삭제된 상품");
+                    }
                     return new ChatRoomListResponse(
-                            room.id(), room.buyerId(), room.sellerId(), room.itemId(), room.createdAt(), unreadCount
+                            room.id(), room.buyerId(), buyerUsername, room.sellerId(), sellerUsername, room.itemId(), itemName, room.createdAt(), unreadCount
                     );
                 })
                 .collect(Collectors.toList());

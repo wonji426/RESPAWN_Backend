@@ -1,7 +1,6 @@
 package com.shop.respawn.controller;
 
 import com.shop.respawn.domain.ChatMessage;
-import com.shop.respawn.domain.ChatRoom;
 import com.shop.respawn.dto.chat.ChatMessageDTO;
 import com.shop.respawn.dto.chat.ChatRoomListResponse;
 import com.shop.respawn.dto.chat.ChatRoomRequest;
@@ -50,7 +49,9 @@ public class ChatController {
                 LocalDateTime.now()
         );
 
-        chatMessageRepository.save(message);
+        if ("CHAT".equals(messageDTO.type())) {
+            chatMessageRepository.save(message);
+        }
 
         messagingTemplate.convertAndSend("/topic/chat/" + roomId, message);
     }
@@ -74,7 +75,7 @@ public class ChatController {
     }
 
     @GetMapping("/rooms")
-    public ResponseEntity<List<ChatRoomListResponse>> getRooms(Authentication authentication) { // ⭐️ 반환 타입 변경
+    public ResponseEntity<List<ChatRoomListResponse>> getRooms(Authentication authentication) {
         Long sellerId = getUserIdFromAuthentication(authentication);
 
         List<ChatRoomListResponse> rooms = chatRoomService.getSellerChatRooms(sellerId);
@@ -82,7 +83,7 @@ public class ChatController {
     }
 
     @GetMapping("/buyer/rooms")
-    public ResponseEntity<List<ChatRoomListResponse>> getBuyerRooms(Authentication authentication) { // ⭐️ 반환 타입 변경
+    public ResponseEntity<List<ChatRoomListResponse>> getBuyerRooms(Authentication authentication) {
         Long buyerId = getUserIdFromAuthentication(authentication);
 
         List<ChatRoomListResponse> rooms = chatRoomService.getBuyerChatRooms(buyerId);
