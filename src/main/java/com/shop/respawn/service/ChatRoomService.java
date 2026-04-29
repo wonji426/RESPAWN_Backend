@@ -78,7 +78,7 @@ public class ChatRoomService {
                 .orElse("알 수 없는 사용자");
         return chatRoomRepository.findBySellerId(sellerIdStr).stream()
                 .map(room -> {
-                    long unreadCount = chatMessageRepository.countByRoomIdAndSenderIdNotAndIsReadFalse(room.id(), sellerIdStr);
+                    long unreadCount = chatMessageRepository.countByRoomIdAndSenderIdNotAndIsReadFalse(room.id(), sellerUsername);
                     String buyerUsername = buyerRepository.findById(Long.valueOf(room.buyerId()))
                             .map(Buyer::getUsername)
                             .orElse("알 수 없는 사용자");
@@ -102,7 +102,7 @@ public class ChatRoomService {
                 .orElse("알 수 없는 사용자");
         return chatRoomRepository.findByBuyerId(buyerIdStr).stream()
                 .map(room -> {
-                    long unreadCount = chatMessageRepository.countByRoomIdAndSenderIdNotAndIsReadFalse(room.id(), buyerIdStr);
+                    long unreadCount = chatMessageRepository.countByRoomIdAndSenderIdNotAndIsReadFalse(room.id(), buyerUsername);
                     String sellerUsername = sellerRepository.findById(Long.valueOf(room.sellerId()))
                             .map(Seller::getUsername)
                             .orElse("알 수 없는 사용자");
