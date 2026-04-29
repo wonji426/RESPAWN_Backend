@@ -15,4 +15,23 @@ public class AuthenticationUtil {
         } else throw new RuntimeException("로그인이 필요합니다.");
     }
 
+    /**
+     * userType을 가져오는 메서드
+     */
+    public static String getUserTypeFromAuthentication(Authentication authentication) {
+        if (authentication == null) return null;
+
+        String authorities = authentication.getAuthorities().toString();
+
+        if (authorities.contains("ROLE_USER")) {
+            return "buyer";
+        } else if (authorities.contains("ROLE_SELLER")) {
+            return "seller";
+        } else if (authorities.contains("ROLE_ADMIN")) {
+            return "admin";
+        }
+
+        return "unknown";
+    }
+
 }

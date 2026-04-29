@@ -23,6 +23,8 @@ import java.util.NoSuchElementException;
 
 import static com.shop.respawn.exception.status_code.ErrorStatus.*;
 import static com.shop.respawn.exception.status_code.SuccessStatus.*;
+import static com.shop.respawn.util.AuthenticationUtil.getUserIdFromAuthentication;
+import static com.shop.respawn.util.AuthenticationUtil.getUserTypeFromAuthentication;
 
 @Slf4j
 @RestController
@@ -206,6 +208,26 @@ public class UserController {
 
     /**
      * 비밀번호 재설정 페이지 컨트롤러
+     */
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiMessage> resetPassword(Authentication authentication,
+            @RequestBody ChangePasswordRequest changePasswordRequest) {
+        try {
+            Long userId = getUserIdFromAuthentication(authentication);
+            String userType = getUserTypeFromAuthentication(authentication);
+            userService.resetPassword(userId, userType, changePasswordRequest);
+            return ResponseEntity.ok(ApiMessage.of("비밀번호가 성공적으로 변경되었습니다."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiMessage.of(e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiMessage.of(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiMessage.of(e.getMessage()));
+        }
+    }
+
+    /**
+     * 비밀번호 재설정 페이지 컨트롤러 (이메일)
      */
     @PostMapping("/reset-password")
     public ResponseEntity<ApiMessage> resetPassword(@RequestBody ResetPasswordRequest resetPasswordRequest) {
