@@ -40,7 +40,15 @@ public class ItemDto {
 
     private ItemStatus status;
 
-    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category) {
+    private boolean isWished; // 기본값은 false
+
+    private Long wishCount;
+
+    private Long soldCount;
+
+    private Long reviewCount;
+
+    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, Long soldCount, Long reviewCount) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -53,6 +61,8 @@ public class ItemDto {
         this.sellerId = sellerId;
         this.imageUrl = imageUrl;
         this.category = category;
+        this.soldCount = soldCount;
+        this.reviewCount = reviewCount;
     }
 
     public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, ItemStatus status) {
@@ -71,7 +81,7 @@ public class ItemDto {
         this.status = status;
     }
 
-    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, String categoryName, ItemStatus status) {
+    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, String categoryName, ItemStatus status, Long wishCount, Long soldCount, Long reviewCount) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -86,9 +96,12 @@ public class ItemDto {
         this.category = category;
         this.categoryName = categoryName;
         this.status = status;
+        this.wishCount = wishCount;
+        this.soldCount = soldCount;
+        this.reviewCount = reviewCount;
     }
 
-    public ItemDto(String id, String name, String company, String imageUrl, String deliveryType, Long price, long stockQuantity) {
+    public ItemDto(String id, String name, String company, String imageUrl, String deliveryType, Long price, long stockQuantity, Long soldCount, Long reviewCount) {
         this.id = id;
         this.name = name;
         this.company = company;
@@ -96,6 +109,8 @@ public class ItemDto {
         this.deliveryType = deliveryType;
         this.price = price;
         this.stockQuantity = stockQuantity;
+        this.soldCount = soldCount;
+        this.reviewCount = reviewCount;
     }
 
     public ItemDto(String id, String name, String company, Long price, String imageUrl) {

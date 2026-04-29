@@ -56,6 +56,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/bring-me").authenticated()
                         .requestMatchers("/api/user/**").authenticated()
+                        .requestMatchers("/api/ws/chat/**").authenticated()
                         .requestMatchers("/api/uploads/**").permitAll()
                         .anyRequest().permitAll()
                 );
@@ -141,7 +142,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true); // ★ withCredentials: true와 같이 사용하려면 꼭 true로 설정
         config.setAllowedOrigins(List.of(frontendUrl)); // * 사용하지 말고 정확하게 지정
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("*"));
 

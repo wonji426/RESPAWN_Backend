@@ -213,4 +213,13 @@ public class CouponService {
 
         return result;
     }
+
+    /**
+     * 사용 가능한 쿠폰 갯수만 빠르게 조회 (마이페이지 요약용)
+     */
+    @Transactional(readOnly = true)
+    public long countAvailableCoupons(Long buyerId) {
+        if (buyerId == null) return 0;
+        return couponRepository.countAvailableCouponsByBuyerId(buyerId);
+    }
 }

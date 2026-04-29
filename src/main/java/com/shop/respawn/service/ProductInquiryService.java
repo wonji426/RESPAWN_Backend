@@ -81,7 +81,7 @@ public class ProductInquiryService {
                     } else if (!answered) {
                         dto.setBuyerUsername(MaskingUtil.maskUsername(username));
                     } else {
-                        dto.setBuyerUsername(username);
+                        dto.setBuyerUsername(MaskingUtil.maskUsername(username));
                     }
                     return dto;
                 })

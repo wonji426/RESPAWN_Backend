@@ -80,4 +80,18 @@ public class CouponRepositoryImpl implements CouponRepositoryCustom {
 
         return new PageImpl<>(result, pageable, total == null ? 0L : total);
     }
+
+    @Override
+    public long countAvailableCouponsByBuyerId(Long buyerId) {
+        LocalDateTime now = LocalDateTime.now();
+
+        Long count = queryFactory.select(coupon.count())
+                .from(coupon)
+                .where(coupon.buyer.id.eq(buyerId)
+                        .and(coupon.used.isFalse())
+                        .and(coupon.expiresAt.after(now)))
+                .fetchOne();
+
+        return count == null ? 0L : count;
+    }
 }

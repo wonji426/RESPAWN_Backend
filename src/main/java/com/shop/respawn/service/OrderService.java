@@ -284,6 +284,10 @@ public class OrderService {
         // 4. 재고 차감
         reduceStockFromOrderItems(order.getOrderItems());
 
+        order.getOrderItems().forEach(oi ->
+                itemService.increaseSoldCount(oi.getItemId(), (long) oi.getCount())
+        );
+
         // 5. 주문 상태 주문 완료로 변경
         order.setStatus(OrderStatus.PAID);
 
@@ -475,41 +479,53 @@ public class OrderService {
         return getOrderHistoryDtos(pageable, itemIds, orders, orderItemsByOrderId, total);
     }
 
-    /**
-     * 최근 한달 주문 목록
-     */
     @Transactional(readOnly = true)
-    public Page<OrderHistoryDto> getRecentMonthOrders(Long buyerId, Pageable pageable) {
-        LocalDateTime to = LocalDateTime.now();
-        LocalDateTime from = to.minusMonths(1);
+    public Page<OrderSummaryDto> getOrderSummaryList(Long buyerId, Integer months, Pageable pageable) {
+        LocalDateTime from = null;
+        LocalDateTime to = null;
 
-        // 1) 최근 한달간 주문 Page 조회 (주문만 페이징, 정렬 최신순)
+        // months 값이 들어왔을 때만 날짜 범위를 계산
+        if (months != null && months > 0) {
+            to = LocalDateTime.now();
+            from = to.minusMonths(months);
+        }
+
+        // 1) 주문 조회 (from, to가 null일 수 있음)
         List<Order> orders = orderRepository.findPaidOrdersByBuyerAndDateRange(buyerId, from, to, pageable);
-
-        // 2) 전체 주문 개수 조회 (같은 조건으로 카운트)
         long total = orderRepository.countPaidOrdersByBuyerAndDateRange(buyerId, from, to);
 
         if (orders.isEmpty()) {
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
-        // 3) 조회된 주문 Id 리스트
-        List<Long> orderIds = orders.stream().map(Order::getId).collect(Collectors.toList());
-
-        // 4) OrderItem들을 일괄 조회 (batch fetch)
-        List<OrderItem> orderItems = orderItemRepository.findOrderItemsByOrderIds(orderIds);
-
-        // 5) 주문별 주문아이템 그룹핑
-        Map<Long, List<OrderItem>> orderItemsByOrderId = orderItems.stream()
-                .collect(Collectors.groupingBy(oi -> oi.getOrder().getId()));
-
-        // 6) 주문아이템의 상품아이디 목록 가져오기 및 MongoDB에서 일괄 조회
-        List<String> itemIds = orderItems.stream()
-                .map(OrderItem::getItemId)
+        // 2) 첫 번째 아이템 이미지 조회를 위한 ItemId 수집
+        List<String> firstItemIds = orders.stream()
+                .map(o -> o.getOrderItems().getFirst().getItemId())
                 .distinct()
-                .collect(Collectors.toList());
+                .toList();
 
-        return getOrderHistoryDtos(pageable, itemIds, orders, orderItemsByOrderId, total);
+        // 3) Mongo DB에서 썸네일 정보 가져오기
+        Map<String, String> itemImageMap = itemService.getPartialItemsByIds(firstItemIds).stream()
+                .collect(Collectors.toMap(Item::getId, Item::getImageUrl));
+
+        // 4) 최종 요약 DTO 변환
+        List<OrderSummaryDto> content = orders.stream()
+                .map(order -> {
+                    String firstItemId = order.getOrderItems().getFirst().getItemId();
+                    String imageUrl = itemImageMap.getOrDefault(firstItemId, "");
+
+                    return new OrderSummaryDto(
+                            order.getId(),
+                            order.getOrderName(),
+                            imageUrl,
+                            order.getOrderDate(),
+                            order.getTotalAmount(),
+                            order.getStatus()
+                    );
+                })
+                .toList();
+
+        return new PageImpl<>(content, pageable, total);
     }
 
     private PageImpl<OrderHistoryDto> getOrderHistoryDtos(
@@ -855,6 +871,7 @@ public class OrderService {
 
         // 재고 복원 (필요한 경우)
         item.addStock(orderItem.getCount());
+        item.removeSoldCount(orderItem.getCount());
         itemRepository.save(item);
 
         // 포인트 적립 취소
@@ -1008,6 +1025,9 @@ public class OrderService {
         return deliveryFee;
     }
 
+    /**
+     * 포인트 적용을 눌렀을 때
+     */
     public String applyPoints(Long buyerId, Long orderId, Long usePointAmount) {
 
         Order order = orderRepository.findById(orderId)
@@ -1036,5 +1056,21 @@ public class OrderService {
         orderRepository.save(order);
 
         return "포인트 " + usePointAmount + "원이 적용되었습니다.";
+    }
+
+    /**
+     * 특정 구매자의 최근 1년(금일 기준) 내 결제 완료된 주문 갯수 조회 (마이페이지 요약용)
+     */
+    @Transactional(readOnly = true)
+    public long countRecentYearOrders(Long buyerId) {
+        if (buyerId == null) {
+            return 0;
+        }
+
+        LocalDateTime to = LocalDateTime.now();
+        LocalDateTime from = to.minusYears(1); // 1년 전
+
+        // 이미 작성해두신 QueryDSL 카운트 메서드 재사용
+        return orderRepository.countPaidOrdersByBuyerAndDateRange(buyerId, from, to);
     }
 }

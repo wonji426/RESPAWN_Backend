@@ -192,16 +192,23 @@ public class OrderController {
         return ResponseEntity.ok(latestOrder);
     }
 
-    @GetMapping("/history/recent-month")
-    public ResponseEntity<PageResponse<OrderHistoryDto>> getRecentMonthOrders(
+    /**
+     * 결제 주문 내역 요약 조회 (months 입력 시 N개월 조회, 없으면 전체 조회)
+     */
+    @GetMapping("/history/summary")
+    public ResponseEntity<PageResponse<OrderSummaryDto>> getOrderSummary(
             Authentication authentication,
+            @RequestParam(required = false) Integer months, // 선택적 파라미터
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "3") int size  // 기본값 3개로 세팅
     ) {
         try {
             Long buyerId = getUserIdFromAuthentication(authentication);
             Pageable pageable = PageRequest.of(page, size);
-            Page<OrderHistoryDto> orders = orderService.getRecentMonthOrders(buyerId, pageable);
+
+            // 서비스 메서드 호출 시 months 전달
+            Page<OrderSummaryDto> orders = orderService.getOrderSummaryList(buyerId, months, pageable);
+
             return ResponseEntity.ok(PageResponse.from(orders));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(PageResponse.error(e.getMessage()));

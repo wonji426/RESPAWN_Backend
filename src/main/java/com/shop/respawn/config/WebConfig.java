@@ -12,14 +12,14 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
-    @Value("${uploadPath-Sub}")
-    private String uploadPathSub;
+    @Value("${readPath}")
+    private String readPath;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
                 .allowedOrigins(frontendUrl, "https://134.185.109.250")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                 .allowedHeaders("*")
                 .allowCredentials(true);
     }
@@ -27,6 +27,6 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/api/uploads/**")
-                .addResourceLocations(uploadPathSub); // 또는 실제 업로드 경로
+                .addResourceLocations(readPath); // 또는 실제 업로드 경로
     }
 }

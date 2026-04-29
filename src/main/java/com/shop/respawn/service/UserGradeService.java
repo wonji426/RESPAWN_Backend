@@ -57,6 +57,26 @@ public class UserGradeService {
     }
 
     /**
+     * 관리자 수동 유저 등급 변경
+     */
+    public void updateBuyerGradeManual(Long buyerId, Grade newGrade) {
+        Buyer buyer = buyerRepository.findById(buyerId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 구매자입니다. buyerId=" + buyerId));
+
+        Grade oldGrade = buyer.getGrade();
+
+        // 기존 등급과 다를 때만 업데이트 수행
+        if (oldGrade != newGrade) {
+            buyer.updateGrade(newGrade);
+
+            // 수동 변경 시에도 자동 갱신과 동일하게 등급 쿠폰 발급 (원치 않으시면 이 줄은 삭제하셔도 됩니다)
+            couponService.issueGradeCoupon(buyerId, newGrade);
+
+            log.info("관리자 수동 등급 변경 완료 - buyerId: {}, oldGrade: {}, newGrade: {}", buyerId, oldGrade, newGrade);
+        }
+    }
+
+    /**
      * buyerIds가 null 또는 empty면 전체 대상 처리.
      * 각 buyerId는 개별 트랜잭션으로 처리하여 부분 성공을 허용.
      */

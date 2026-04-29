@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.shop.respawn.dto.GradeUpdateRequest;
 
 import java.util.List;
 
@@ -36,6 +37,17 @@ public class UserGradeController {
     @Secured("ROLE_ADMIN")
     public ResponseEntity<UserGradeResponse> gradeByBuyerId(@PathVariable Long buyerId) {
         return ResponseEntity.ok(userGradeService.findBuyerGradeById(buyerId));
+    }
+
+    // 3) 관리자 수동 등급 변경 API
+    @PutMapping("/{buyerId}")
+    @Secured("ROLE_ADMIN")
+    public ResponseEntity<String> updateGradeManual(
+            @PathVariable Long buyerId,
+            @RequestBody GradeUpdateRequest request
+    ) {
+        userGradeService.updateBuyerGradeManual(buyerId, request.getNewGrade());
+        return ResponseEntity.ok("등급이 성공적으로 " + request.getNewGrade() + "(으)로 변경되었습니다.");
     }
 
     // 1) 단일 사용자 강제 갱신

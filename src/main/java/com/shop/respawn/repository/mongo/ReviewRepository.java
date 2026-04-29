@@ -19,4 +19,13 @@ public interface ReviewRepository extends MongoRepository<Review, String> {
     Page<Review> findByItemIdIn(List<String> itemIds, Pageable pageable);
 
     Page<Review> findByItemId(String itemId, Pageable pageable);
+
+    // 특정 아이템의 리뷰 평균 점수와 총 개수만 계산해서 가져오기
+    @org.springframework.data.mongodb.repository.Aggregation(pipeline = {
+            "{ '$match': { 'itemId': ?0 } }",
+            "{ '$group': { '_id': '$itemId', 'averageRating': { '$avg': '$rating' }, 'totalReviews': { '$sum': 1 } } }"
+    })
+    com.shop.respawn.dto.review.ReviewStatsDto getReviewStatsByItemId(String itemId);
+
+    long countByBuyerId(String buyerId);
 }

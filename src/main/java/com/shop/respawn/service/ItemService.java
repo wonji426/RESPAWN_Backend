@@ -15,6 +15,7 @@ import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -54,6 +55,10 @@ public class ItemService {
             newItem.setImageUrl(itemDto.getImageUrl()); // 대표 사진 경로만 저장
             newItem.setCategory(categoryId);
             newItem.setDescription(itemDto.getDescription());
+            newItem.setCreatedAt(LocalDateTime.now());
+            newItem.setSoldCount(0L);
+            newItem.setWishCount(0L);
+            newItem.setReviewCount(0L);
             if (newItem.getStatus() == null && ItemStatus.class.isEnum()) {
                 newItem.setStatus(ItemStatus.SALE);
             }
@@ -118,7 +123,9 @@ public class ItemService {
                         item.getStockQuantity(),
                         item.getSellerId(),
                         item.getImageUrl(),
-                        item.getCategory()
+                        item.getCategory(),
+                        item.getSoldCount(),
+                        item.getReviewCount()
                 ))
                 .toList();
 
@@ -234,7 +241,11 @@ public class ItemService {
                 item.getSellerId(),
                 item.getImageUrl(),
                 item.getCategory(),
-                item.getStatus()
+                null,    // categoryName (필요 없으면 null)
+                item.getStatus(),
+                item.getWishCount(), // wishCount 포함
+                item.getSoldCount(), // soldCount 포함
+                item.getReviewCount()
         ));
     }
 
@@ -266,8 +277,27 @@ public class ItemService {
                 item.getImageUrl(),
                 item.getCategory(),
                 categoryName,
-                item.getStatus()
+                item.getStatus(),
+                item.getWishCount(),
+                item.getSoldCount(),
+                item.getReviewCount()
         );
     }
 
+    /**
+     * Item 엔티티를 직접 저장/업데이트 합니다. (찜 카운트 업데이트 등에 사용)
+     */
+    public Item save(Item item) {
+        return itemRepository.save(item);
+    }
+
+    /**
+    * 판매량 증가
+    */
+    public void increaseSoldCount(String itemId, long quantity) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("상품 없음"));
+        item.addSoldCount(quantity);
+        itemRepository.save(item);
+    }
 }
