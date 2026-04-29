@@ -1,6 +1,7 @@
 package com.shop.respawn.service;
 
 import com.shop.respawn.domain.*;
+import com.shop.respawn.dto.findInfo.ChangePasswordRequest;
 import com.shop.respawn.dto.findInfo.FindInfoRequest;
 import com.shop.respawn.dto.findInfo.FindInfoResponse;
 import com.shop.respawn.dto.findInfo.ResetPasswordRequest;
@@ -220,6 +221,31 @@ public class UserService {
                     seller.getAccountStatus().markPasswordChangedNow();
                 }
                 return true;
+            }
+        }
+        throw new RuntimeException("사용자를 찾을 수 없습니다.");
+    }
+
+    public void resetPassword(Long userId, String userType, ChangePasswordRequest changePasswordRequest) {
+        String newPassword = changePasswordRequest.getNewPassword();
+        switch (userType) {
+            case "buyer" -> {
+                Buyer buyer = buyerRepository.findById(userId).orElseThrow(() ->
+                        new RuntimeException("구매자를 찾을 수 없습니다." + userId));
+                buyer.updatePassword(encoder.encode(newPassword));
+                if (buyer.getAccountStatus() != null) {
+                    buyer.getAccountStatus().markPasswordChangedNow();
+                }
+                return;
+            }
+            case "seller" -> {
+                Seller seller = sellerRepository.findById(userId).orElseThrow(() ->
+                        new RuntimeException("판매자를 찾을 수 없습니다." + userId));
+                seller.updatePassword(encoder.encode(newPassword));
+                if (seller.getAccountStatus() != null) {
+                    seller.getAccountStatus().markPasswordChangedNow();
+                }
+                return;
             }
         }
         throw new RuntimeException("사용자를 찾을 수 없습니다.");

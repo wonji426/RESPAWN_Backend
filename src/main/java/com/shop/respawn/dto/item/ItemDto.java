@@ -42,13 +42,13 @@ public class ItemDto {
 
     private boolean isWished; // 기본값은 false
 
-    private Long wishCount;
+    private long wishCount;
 
-    private Long soldCount;
+    private long soldCount;
 
-    private Long reviewCount;
+    private long reviewCount;
 
-    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, Long soldCount, Long reviewCount) {
+    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, long soldCount, long reviewCount) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -81,7 +81,7 @@ public class ItemDto {
         this.status = status;
     }
 
-    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, String categoryName, ItemStatus status, Long wishCount, Long soldCount, Long reviewCount) {
+    public ItemDto(String id, String name, String description, String deliveryType, Long deliveryFee, String company, Long companyNumber, Long price, long stockQuantity, String sellerId, String imageUrl, ObjectId category, String categoryName, ItemStatus status, long wishCount, long soldCount, long reviewCount) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -101,7 +101,7 @@ public class ItemDto {
         this.reviewCount = reviewCount;
     }
 
-    public ItemDto(String id, String name, String company, String imageUrl, String deliveryType, Long price, long stockQuantity, Long soldCount, Long reviewCount) {
+    public ItemDto(String id, String name, String company, String imageUrl, String deliveryType, Long price, long stockQuantity, long soldCount, long reviewCount) {
         this.id = id;
         this.name = name;
         this.company = company;
