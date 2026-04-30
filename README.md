@@ -19,7 +19,6 @@
   <img src="https://img.shields.io/badge/Let's_Encrypt-003A70?style=flat-square&logo=Let'sEncrypt&logoColor=white"/>
   <br>
   <img src="https://img.shields.io/badge/Google_GenAI-4285F4?style=flat-square&logo=Google&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Thymeleaf-005F0F?style=flat-square&logo=Thymeleaf&logoColor=white"/>
   <img src="https://img.shields.io/badge/Lombok-BC252A?style=flat-square"/>
   <img src="https://img.shields.io/badge/Querydsl-0769AD?style=flat-square"/>
 </p>
