@@ -58,7 +58,7 @@
 ## 💻 Tech Stack & Environment
 
 ### Framework & Core
-- **Language:** Java 17
+- **Language:** Java 21
 - **Framework:** Spring Boot, Spring WebFlux (비동기 통신)
 - **Tools:** Lombok, Spring Boot DevTools
 
